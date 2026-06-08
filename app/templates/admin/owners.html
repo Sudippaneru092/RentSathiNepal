@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="fw-bold mb-0">Owner Verifications</h4>
+    </div>
+
+    <!-- Filter -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-2">
+            <form method="GET" class="d-flex gap-3">
+                <select name="verification" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    <option value="pending" {% if verification_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="verified" {% if verification_filter == 'verified' %}selected{% endif %}>Verified</option>
+                    <option value="rejected" {% if verification_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Owner</th>
+                            <th>Email</th>
+                            <th>Citizenship No.</th>
+                            <th>Type</th>
+                            <th>Documents</th>
+                            <th>Status</th>
+                            <th class="text-end pe-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for op in owners.items %}
+                            <tr>
+                                <td class="ps-3 fw-semibold small">{{ op.user.full_name }}</td>
+                                <td class="small text-muted">{{ op.user.email }}</td>
+                                <td class="small">{{ op.citizenship_number or '—' }}</td>
+                                <td class="small text-capitalize">{{ op.owner_type or '—' }}</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        {% if op.citizenship_front_image %}
+                                            <a href="{{ url_for('static', filename=op.citizenship_front_image) }}"
+                                               target="_blank" class="btn btn-sm btn-outline-secondary" title="Front">
+                                                <i class="bi bi-image"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if op.citizenship_back_image %}
+                                            <a href="{{ url_for('static', filename=op.citizenship_back_image) }}"
+                                               target="_blank" class="btn btn-sm btn-outline-secondary" title="Back">
+                                                <i class="bi bi-image"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if not op.citizenship_front_image and not op.citizenship_back_image %}
+                                            <span class="text-muted small">None uploaded</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if op.verification_status == 'verified' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Verified</span>
+                                    {% elif op.verification_status == 'pending' %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
+                                    {% else %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    {% if op.verification_status == 'pending' %}
+                                        <div class="d-flex gap-1 justify-content-end">
+                                            <form method="POST" action="{{ url_for('admin.verify_owner', owner_id=op.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="action" value="verify">
+                                                <button type="submit" class="btn btn-success btn-sm">
+                                                    <i class="bi bi-check-circle me-1"></i>Verify
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('admin.verify_owner', owner_id=op.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="action" value="reject">
+                                                <button type="submit" class="btn btn-danger btn-sm">
+                                                    <i class="bi bi-x-circle me-1"></i>Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">No owners found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

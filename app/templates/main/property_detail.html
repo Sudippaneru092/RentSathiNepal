@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index', city=property.city) }}">{{ property.city }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ property.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Image Gallery -->
+            {% if images %}
+                {% if images|length == 1 %}
+                    <img src="{{ url_for('static', filename=images[0].image_path) }}"
+                         class="img-fluid rounded-3 w-100 mb-3 property-detail-img" alt="{{ property.title }}">
+                {% else %}
+                    <div id="propertyCarousel" class="carousel slide mb-3 rounded-3 overflow-hidden shadow-sm" data-bs-ride="carousel">
+                        <div class="carousel-indicators">
+                            {% for img in images %}
+                                <button type="button" data-bs-target="#propertyCarousel"
+                                        data-bs-slide-to="{{ loop.index0 }}"
+                                        class="{% if loop.first %}active{% endif %}"></button>
+                            {% endfor %}
+                        </div>
+                        <div class="carousel-inner">
+                            {% for img in images %}
+                                <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                    <img src="{{ url_for('static', filename=img.image_path) }}"
+                                         class="d-block w-100 property-detail-img" alt="{{ property.title }}">
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    </div>
+                    <!-- Thumbnail strip -->
+                    <div class="d-flex gap-2 mb-3 overflow-auto pb-1">
+                        {% for img in images %}
+                            <img src="{{ url_for('static', filename=img.image_path) }}"
+                                 class="rounded cursor-pointer img-thumbnail flex-shrink-0"
+                                 style="width:80px;height:60px;object-fit:cover;"
+                                 onclick="goToSlide({{ loop.index0 }})" alt="">
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3"
+                     style="height: 350px;">
+                    <i class="bi bi-house text-muted" style="font-size: 5rem;"></i>
+                </div>
+            {% endif %}
+
+            <!-- Title & Basic Info -->
+            <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
+                <div>
+                    <h2 class="fw-bold mb-1">{{ property.title }}</h2>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-geo-alt me-1"></i>
+                        {{ property.address or '' }}
+                        {% if property.area %}, {{ property.area }}{% endif %}
+                        {% if property.city %}, {{ property.city }}{% endif %}
+                        {% if property.district %}, {{ property.district }}{% endif %}
+                    </p>
+                </div>
+                <div class="text-end mt-2 mt-md-0">
+                    <div class="h3 text-primary fw-bold mb-0">
+                        Rs. {{ "{:,.0f}".format(property.price) }}
+                        <small class="fs-6 text-muted fw-normal">/month</small>
+                    </div>
+                    <span class="badge bg-{{ 'success' if property.availability_status == 'available' else 'secondary' }} mt-1">
+                        {{ property.availability_status.capitalize() }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 text-capitalize">
+                    <i class="bi bi-house me-1"></i>{{ property.property_type }}
+                </span>
+                {% if property.furnished %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                        <i class="bi bi-check-circle me-1"></i>Furnished
+                    </span>
+                {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
+                        Unfurnished
+                    </span>
+                {% endif %}
+                {% if property.parking %}
+                    <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2">
+                        <i class="bi bi-car-front me-1"></i>Parking Available
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Property Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-4 col-md-2">
+                    <div class="text-center p-3 bg-light rounded-3">
+                        <i class="bi bi-door-open fs-4 text-primary mb-1 d-block"></i>
+                        <div class="fw-bold">{{ property.bedrooms }}</div>
+                        <small class="text-muted">Bedrooms</small>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="text-center p-3 bg-light rounded-3">
+                        <i class="bi bi-droplet fs-4 text-primary mb-1 d-block"></i>
+                        <div class="fw-bold">{{ property.bathrooms }}</div>
+                        <small class="text-muted">Bathrooms</small>
+                    </div>
+                </div>
+                {% if property.area %}
+                    <div class="col-4 col-md-3">
+                        <div class="text-center p-3 bg-light rounded-3">
+                            <i class="bi bi-rulers fs-4 text-primary mb-1 d-block"></i>
+                            <div class="fw-bold small">{{ property.area }}</div>
+                            <small class="text-muted">Area</small>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Description -->
+            {% if property.description %}
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3">About this Property</h5>
+                    <p class="text-muted lh-lg">{{ property.description }}</p>
+                </div>
+            {% endif %}
+
+            <!-- Amenities -->
+            {% if amenities %}
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3">Amenities</h5>
+                    <div class="row g-2">
+                        {% for amenity in amenities %}
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="d-flex align-items-center gap-2 p-2 bg-light rounded">
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                    <span class="small">{{ amenity.amenity_name }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Reviews Section -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">
+                        Reviews
+                        {% if reviews %}
+                            <span class="badge bg-secondary ms-2">{{ reviews|length }}</span>
+                        {% endif %}
+                    </h5>
+                    {% set avg = property.average_rating() %}
+                    {% if avg > 0 %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rating-stars">
+                                {% for i in range(1, 6) %}
+                                    <i class="bi bi-star{% if i <= avg %}-fill text-warning{% else %} text-muted{% endif %}"></i>
+                                {% endfor %}
+                            </div>
+                            <span class="fw-semibold">{{ avg }}/5</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if reviews %}
+                    {% for review in reviews %}
+                        <div class="card border-0 bg-light mb-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="avatar-circle bg-primary text-white fw-bold">
+                                            {{ review.reviewer.full_name[0].upper() }}
+                                        </span>
+                                        <div>
+                                            <div class="fw-semibold small">{{ review.reviewer.full_name }}</div>
+                                            <small class="text-muted">{{ review.created_at.strftime('%b %d, %Y') }}</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {% for i in range(1, 6) %}
+                                            <i class="bi bi-star{% if i <= review.rating %}-fill text-warning{% else %} text-muted{% endif %} small"></i>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% if review.review %}
+                                    <p class="mb-0 text-muted">{{ review.review }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No reviews yet. Be the first to review!</p>
+                {% endif %}
+
+                <!-- Add Review Form -->
+                {% if current_user.is_authenticated and current_user.role == 'user' %}
+                    <div class="card border-0 shadow-sm mt-3">
+                        <div class="card-body">
+                            <h6 class="fw-semibold mb-3">Write a Review</h6>
+                            <form method="POST" action="{{ url_for('main.add_review', property_id=property.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Rating</label>
+                                    <div class="star-rating d-flex gap-2" id="starRating">
+                                        {% for i in range(1, 6) %}
+                                            <label class="star-label fs-4" for="star{{ i }}">
+                                                <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" class="d-none" required>
+                                                <i class="bi bi-star text-muted" data-val="{{ i }}"></i>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Your Review (optional)</label>
+                                    <textarea name="review" class="form-control" rows="3"
+                                              placeholder="Share your experience..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-send me-1"></i>Submit Review
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% elif not current_user.is_authenticated %}
+                    <div class="alert alert-light border mt-3">
+                        <a href="{{ url_for('auth.login') }}" class="text-primary fw-semibold">Login</a>
+                        to leave a review.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Price Card -->
+            <div class="card border-0 shadow-sm mb-3 sticky-top" style="top: 80px; z-index: 10;">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="h2 text-primary fw-bold">Rs. {{ "{:,.0f}".format(property.price) }}</div>
+                        <small class="text-muted">per month</small>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.role == 'user' %}
+                            <!-- Favorite button -->
+                            <form method="POST"
+                                  action="{{ url_for('main.toggle_favorite', property_id=property.id) }}"
+                                  class="d-grid mb-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit"
+                                        class="btn {% if is_favorite %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                                    <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} me-2"></i>
+                                    {% if is_favorite %}Remove from Favorites{% else %}Save to Favorites{% endif %}
+                                </button>
+                            </form>
+
+                            <!-- Contact Owner -->
+                            {% if current_user.id != property.owner_id %}
+                                <button type="button" class="btn btn-primary w-100 mb-2"
+                                        data-bs-toggle="modal" data-bs-target="#contactModal">
+                                    <i class="bi bi-chat-text me-2"></i>Contact Owner
+                                </button>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- Report Property -->
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1"
+                                data-bs-toggle="modal" data-bs-target="#reportModal">
+                            <i class="bi bi-flag me-1"></i>Report Property
+                        </button>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-primary w-100 mb-2">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Login to Contact
+                        </a>
+                    {% endif %}
+
+                    <hr>
+                    <!-- Owner Info -->
+                    <h6 class="fw-semibold mb-3">Listed by</h6>
+                    <div class="d-flex align-items-center gap-3">
+                        {% if owner.profile_image %}
+                            <img src="{{ url_for('static', filename=owner.profile_image) }}"
+                                 class="rounded-circle" width="48" height="48" style="object-fit:cover;" alt="">
+                        {% else %}
+                            <div class="avatar-circle bg-primary text-white fw-bold fs-5 flex-shrink-0">
+                                {{ owner.full_name[0].upper() }}
+                            </div>
+                        {% endif %}
+                        <div>
+                            <div class="fw-semibold">{{ owner.full_name }}</div>
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check text-success me-1"></i>Verified Owner
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Property Details Card -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <h6 class="fw-semibold mb-3">Property Details</h6>
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted small">Type</td>
+                            <td class="fw-semibold small text-capitalize">{{ property.property_type }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Bedrooms</td>
+                            <td class="fw-semibold small">{{ property.bedrooms }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Bathrooms</td>
+                            <td class="fw-semibold small">{{ property.bathrooms }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Furnished</td>
+                            <td class="fw-semibold small">{{ 'Yes' if property.furnished else 'No' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">Parking</td>
+                            <td class="fw-semibold small">{{ 'Yes' if property.parking else 'No' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted small">City</td>
+                            <td class="fw-semibold small">{{ property.city }}</td>
+                        </tr>
+                        {% if property.district %}
+                            <tr>
+                                <td class="text-muted small">District</td>
+                                <td class="fw-semibold small">{{ property.district }}</td>
+                            </tr>
+                        {% endif %}
+                        <tr>
+                            <td class="text-muted small">Listed on</td>
+                            <td class="fw-semibold small">{{ property.created_at.strftime('%b %d, %Y') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contact Owner Modal -->
+{% if current_user.is_authenticated and current_user.role == 'user' %}
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">Contact Owner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('main.contact_owner', property_id=property.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Send a message to <strong>{{ owner.full_name }}</strong> about this property.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Message</label>
+                        <textarea name="message" class="form-control" rows="4" required
+                                  placeholder="Hi, I am interested in this property. Is it still available?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send me-1"></i>Send Message
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Report Modal -->
+{% if current_user.is_authenticated %}
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold">Report Property</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('main.report_property', property_id=property.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason for Report</label>
+                        <textarea name="reason" class="form-control" rows="3" required
+                                  placeholder="Describe the issue with this property listing..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-flag me-1"></i>Submit Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Star rating interaction
+document.querySelectorAll('.star-label').forEach(label => {
+    const icon = label.querySelector('i');
+    const input = label.querySelector('input');
+    label.addEventListener('click', () => {
+        const val = parseInt(icon.dataset.val);
+        document.querySelectorAll('.star-label i').forEach((star, idx) => {
+            if (idx < val) {
+                star.classList.replace('bi-star', 'bi-star-fill');
+                star.classList.add('text-warning');
+                star.classList.remove('text-muted');
+            } else {
+                star.classList.replace('bi-star-fill', 'bi-star');
+                star.classList.remove('text-warning');
+                star.classList.add('text-muted');
+            }
+        });
+    });
+});
+
+function goToSlide(idx) {
+    const carousel = bootstrap.Carousel.getOrCreateInstance(document.getElementById('propertyCarousel'));
+    carousel.to(idx);
+}
+</script>
+{% endblock %}

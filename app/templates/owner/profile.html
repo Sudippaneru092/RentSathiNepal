@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="fw-bold mb-0">Owner Profile</h4>
+                    <p class="text-muted small mb-0">Update your profile and verification documents</p>
+                </div>
+            </div>
+
+            <!-- Verification Status -->
+            <div class="alert {% if owner_profile.verification_status == 'verified' %}alert-success{% elif owner_profile.verification_status == 'rejected' %}alert-danger{% else %}alert-warning{% endif %} mb-4">
+                {% if owner_profile.verification_status == 'verified' %}
+                    <i class="bi bi-shield-check me-2"></i><strong>Verified Owner</strong> — Your profile is verified.
+                {% elif owner_profile.verification_status == 'rejected' %}
+                    <i class="bi bi-shield-x me-2"></i><strong>Verification Rejected</strong> — Please update your documents and resubmit.
+                {% else %}
+                    <i class="bi bi-clock me-2"></i><strong>Pending Verification</strong> — Your profile is under review.
+                {% endif %}
+            </div>
+
+            <form method="POST" action="{{ url_for('owner.owner_profile') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Personal Info -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0"><i class="bi bi-person me-2 text-primary"></i>Personal Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Full Name</label>
+                                <input type="text" class="form-control" name="full_name"
+                                       value="{{ current_user.full_name }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Phone</label>
+                                <input type="text" class="form-control" name="phone"
+                                       value="{{ current_user.phone or '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Province</label>
+                                <select class="form-select" name="province">
+                                    <option value="">Select</option>
+                                    {% for prov in ['Koshi', 'Madhesh', 'Bagmati', 'Gandaki', 'Lumbini', 'Karnali', 'Sudurpashchim'] %}
+                                        <option value="{{ prov }}" {% if current_user.province == prov %}selected{% endif %}>{{ prov }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">District</label>
+                                <input type="text" class="form-control" name="district"
+                                       value="{{ current_user.district or '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">City</label>
+                                <input type="text" class="form-control" name="city"
+                                       value="{{ current_user.city or '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Address</label>
+                                <textarea class="form-control" name="address" rows="2">{{ current_user.address or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ownership Verification -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0"><i class="bi bi-shield me-2 text-primary"></i>Ownership Verification</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Citizenship Number</label>
+                                <input type="text" class="form-control" name="citizenship_number"
+                                       value="{{ owner_profile.citizenship_number or '' }}"
+                                       placeholder="e.g., 12-01-00-00000">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Owner Type</label>
+                                <select class="form-select" name="owner_type">
+                                    <option value="">Select</option>
+                                    <option value="individual" {% if owner_profile.owner_type == 'individual' %}selected{% endif %}>Individual</option>
+                                    <option value="agency" {% if owner_profile.owner_type == 'agency' %}selected{% endif %}>Agency / Company</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Citizenship Front</label>
+                                {% if owner_profile.citizenship_front_image %}
+                                    <div class="mb-2">
+                                        <img src="{{ url_for('static', filename=owner_profile.citizenship_front_image) }}"
+                                             class="img-thumbnail" style="max-height:100px;" alt="Front">
+                                    </div>
+                                {% endif %}
+                                <input type="file" class="form-control" name="citizenship_front_image" accept="image/*,.pdf">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Citizenship Back</label>
+                                {% if owner_profile.citizenship_back_image %}
+                                    <div class="mb-2">
+                                        <img src="{{ url_for('static', filename=owner_profile.citizenship_back_image) }}"
+                                             class="img-thumbnail" style="max-height:100px;" alt="Back">
+                                    </div>
+                                {% endif %}
+                                <input type="file" class="form-control" name="citizenship_back_image" accept="image/*,.pdf">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 justify-content-end">
+                    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-5">
+                        <i class="bi bi-check-circle me-2"></i>Save Profile
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

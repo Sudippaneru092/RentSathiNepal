@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ===== SEARCH TOPBAR ===== -->
+<div class="search-topbar" id="searchTopbar">
+  <div class="container">
+    <div class="stb-inner">
+
+      <!-- Live Search Input -->
+      <div class="stb-search-wrap" id="searchWrap">
+        <i class="bi bi-search stb-search-icon"></i>
+        <input type="text" id="mainSearch" class="stb-search-input"
+               placeholder="Search city, area, property name..."
+               value="{{ q or city }}"
+               autocomplete="off">
+        <button class="stb-clear-btn" id="clearSearch" title="Clear">
+          <i class="bi bi-x"></i>
+        </button>
+        <!-- Suggestions Dropdown -->
+        <div class="suggestions-dropdown" id="suggestionsBox"></div>
+      </div>
+
+      <!-- Property Type Pills -->
+      <div class="stb-types" id="typeFilters">
+        <a href="{{ url_for('main.listings', **dict(request.args, property_type='', page=1)) }}"
+           class="stb-type {% if not ptype %}active{% endif %}">All</a>
+        {% for t in ['Room','Flat','House','Apartment','Shutter','Hostel'] %}
+        <a href="{{ url_for('main.listings', **dict(request.args, property_type=t.lower(), page=1)) }}"
+           class="stb-type {% if ptype == t.lower() %}active{% endif %}">{{ t }}</a>
+        {% endfor %}
+      </div>
+
+      <!-- Right Controls -->
+      <div class="stb-right">
+        <!-- Near Me Button -->
+        <button class="near-me-btn" id="nearMeBtn" type="button" title="Find properties near my location">
+          <i class="bi bi-cursor-fill"></i> Near Me
+        </button>
+        <button class="stb-filter-btn {% if active_filters %}has-filters{% endif %}"
+                id="toggleFilters" type="button">
+          <i class="bi bi-sliders2"></i> Filters
+          {% if active_filters %}<span class="filter-count">{{ active_filters|length }}</span>{% endif %}
+        </button>
+        <div class="stb-view-btns">
+          <button class="stb-view active" id="gridViewBtn" title="Grid"><i class="bi bi-grid-3x3-gap-fill"></i></button>
+          <button class="stb-view" id="listViewBtn" title="List"><i class="bi bi-list-ul"></i></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADVANCED FILTER PANEL (slide-down) ===== -->
+<div class="filter-panel" id="filterPanel">
+  <div class="container">
+    <form method="GET" action="{{ url_for('main.listings') }}" id="filterForm">
+      <!-- Preserve search query -->
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="city" value="{{ city }}">
+      <input type="hidden" name="property_type" value="{{ ptype }}">
+      <input type="hidden" name="sort" value="{{ sort }}">
+
+      <div class="fp-grid">
+
+        <!-- Price Range -->
+        <div class="fp-section">
+          <div class="fp-label">Price Range (Rs./month)</div>
+          <div class="price-range-wrap">
+            <div class="price-inputs">
+              <div class="price-input-box">
+                <span>Min</span>
+                <input type="number" name="min_price" id="minPriceInput"
+                       value="{{ min_p }}" placeholder="0" min="0" step="500">
+              </div>
+              <div class="price-range-dash">—</div>
+              <div class="price-input-box">
+                <span>Max</span>
+                <input type="number" name="max_price" id="maxPriceInput"
+                       value="{{ max_p }}" placeholder="Any" min="0" step="500">
+              </div>
+            </div>
+            <!-- Dual-handle range slider -->
+            <div class="range-slider-wrap" id="rangeSliderWrap"
+                 data-min="{{ price_min_db }}" data-max="{{ price_max_db }}"
+                 data-val-min="{{ min_p or price_min_db }}"
+                 data-val-max="{{ max_p or price_max_db }}">
+              <div class="range-track">
+                <div class="range-fill" id="rangeFill"></div>
+              </div>
+              <input type="range" class="range-thumb" id="thumbMin"
+                     min="{{ price_min_db }}" max="{{ price_max_db }}"
+                     value="{{ min_p or price_min_db }}" step="500">
+              <input type="range" class="range-thumb" id="thumbMax"
+                     min="{{ price_min_db }}" max="{{ price_max_db }}"
+                     value="{{ max_p or price_max_db }}" step="500">
+            </div>
+            <div class="price-hint">
+              Rs. <span id="priceMinDisplay">{{ "{:,}".format((min_p|int) if min_p else price_min_db) }}</span>
+              — Rs. <span id="priceMaxDisplay">{{ "{:,}".format((max_p|int) if max_p else price_max_db) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bedrooms -->
+        <div class="fp-section">
+          <div class="fp-label">Bedrooms</div>
+          <div class="bed-btns">
+            {% for val, label in [('any','Any'),('1','1'),('2','2'),('3','3'),('4','4+')] %}
+            <label class="bed-btn {% if (bedrooms or 'any') == val %}active{% endif %}">
+              <input type="radio" name="bedrooms" value="{{ val }}" class="d-none"
+                     {% if (bedrooms or 'any') == val %}checked{% endif %}>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Furnished -->
+        <div class="fp-section">
+          <div class="fp-label">Furnishing</div>
+          <div class="bed-btns">
+            {% for val, label in [('','Any'),('1','Furnished'),('semi','Semi'),('0','Unfurnished')] %}
+            <label class="bed-btn {% if furnished == val %}active{% endif %}">
+              <input type="radio" name="furnished" value="{{ val }}" class="d-none"
+                     {% if furnished == val %}checked{% endif %}>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- More Options -->
+        <div class="fp-section">
+          <div class="fp-label">Extras</div>
+          <div class="extras-checks">
+            <label class="extra-check {% if parking == '1' %}active{% endif %}">
+              <input type="checkbox" name="parking" value="1" {% if parking == '1' %}checked{% endif %}>
+              <i class="bi bi-car-front"></i> Parking
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="fp-actions">
+        <a href="{{ url_for('main.listings') }}" class="fp-reset">
+          <i class="bi bi-x-circle me-1"></i>Clear All
+        </a>
+        <button type="submit" class="fp-apply">
+          <i class="bi bi-search me-1"></i>Apply Filters
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="listings-page">
+  <div class="container">
+
+    <!-- Results Bar -->
+    <div class="results-bar">
+      <div class="results-left">
+        <!-- Active filter chips -->
+        <div class="active-chips" id="activeChips">
+          {% for key, val, label in active_filters %}
+          <a href="{{ url_for('main.listings', **dict(request.args.to_dict(flat=True), **{key: '', 'page': 1})) }}"
+             class="chip">
+            {{ label }} <i class="bi bi-x"></i>
+          </a>
+          {% endfor %}
+          {% if active_filters %}
+          <a href="{{ url_for('main.listings') }}" class="chip chip-clear">Clear all</a>
+          {% endif %}
+        </div>
+        <span class="results-count">
+          <strong>{{ properties.total }}</strong> propert{{ 'y' if properties.total == 1 else 'ies' }} found
+        </span>
+      </div>
+      <div class="results-right">
+        <label class="sort-label">Sort:</label>
+        <select class="sort-select" id="sortSelect">
+          <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
+          <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Price: Low → High</option>
+          <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price: High → Low</option>
+          <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Property Grid -->
+    <div class="prop-grid" id="propGrid">
+      {% if properties.items %}
+        {% for property in properties.items %}
+        <div class="prop-card" data-id="{{ property.id }}">
+          <!-- Image -->
+          <div class="prop-img-wrap">
+            {% set img = property.get_primary_image() %}
+            {% if img %}
+              <img src="{{ prop_img_url(img) }}" alt="{{ property.title }}" loading="lazy">
+            {% else %}
+              <div class="prop-img-placeholder"><i class="bi bi-house"></i></div>
+            {% endif %}
+
+            <div class="prop-badge-tl">
+              {% if property.verification_status == 'verified' %}
+                <span class="badge-verified"><i class="bi bi-patch-check-fill"></i> Verified</span>
+              {% endif %}
+            </div>
+            <span class="badge-type">{{ property.property_type.capitalize() }}</span>
+
+            {% if current_user.is_authenticated and current_user.role == 'user' %}
+              <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=property.id) }}" style="display:contents;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-fav {% if property.id in favorite_ids %}active{% endif %}" title="Save">
+                  <i class="bi bi-heart{% if property.id in favorite_ids %}-fill{% endif %}"></i>
+                </button>
+              </form>
+            {% else %}
+              <a href="{{ url_for('auth.login') }}" class="btn-fav"><i class="bi bi-heart"></i></a>
+            {% endif %}
+          </div>
+
+          <!-- Body -->
+          <div class="prop-body">
+            <div class="d-flex align-items-start justify-content-between gap-1">
+              <div class="prop-title">{{ property.title }}</div>
+              {% set avg = property.average_rating() %}
+              {% if avg > 0 %}
+                <span class="prop-rating"><i class="bi bi-star-fill text-warning"></i> {{ avg }}</span>
+              {% endif %}
+            </div>
+            <div class="prop-location">
+              <i class="bi bi-geo-alt-fill text-danger"></i>
+              {{ property.area or '' }}{% if property.area and property.city %}, {% endif %}{{ property.city }}{% if property.district %}, {{ property.district }}{% endif %}
+            </div>
+            <div class="prop-meta">
+              <span><i class="bi bi-door-open"></i> {{ property.bedrooms }} Bed</span>
+              <span><i class="bi bi-droplet"></i> {{ property.bathrooms }} Bath</span>
+              {% if property.area %}<span><i class="bi bi-rulers"></i> {{ property.area }} sq.ft</span>{% endif %}
+            </div>
+            <div class="prop-amenities">
+              {% if property.furnished %}<span class="amenity-chip"><i class="bi bi-lamp"></i> Furnished</span>{% endif %}
+              {% if property.parking %}<span class="amenity-chip"><i class="bi bi-car-front"></i> Parking</span>{% endif %}
+              {% for pa in property.amenities.limit(2).all() %}
+                <span class="amenity-chip">{{ pa.amenity.amenity_name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <a href="{{ url_for('main.property_detail', property_id=property.id) }}" class="prop-footer text-decoration-none">
+            <span class="prop-price">Rs. {{ "{:,.0f}".format(property.price) }}<small>/mo</small></span>
+            <span class="prop-owner">
+              <span class="owner-avatar">{{ property.owner.full_name[0].upper() }}</span>
+              {{ property.owner.full_name.split()[0] }}
+            </span>
+          </a>
+        </div>
+        {% endfor %}
+
+      {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+          <div class="empty-icon"><i class="bi bi-house-x"></i></div>
+          <h4>No properties found</h4>
+          <p>Try adjusting your filters or searching a different city.</p>
+          <a href="{{ url_for('main.listings') }}" class="fp-apply">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Filters
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if properties.pages > 1 %}
+    <nav class="listings-pagination">
+      {% if properties.has_prev %}
+        <a href="{{ url_for('main.listings', **dict(search_params, page=properties.prev_num)) }}"
+           class="pg-btn"><i class="bi bi-chevron-left"></i> Prev</a>
+      {% endif %}
+      <div class="pg-nums">
+        {% for num in properties.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if num %}
+            <a href="{{ url_for('main.listings', **dict(search_params, page=num)) }}"
+               class="pg-num {% if num == properties.page %}active{% endif %}">{{ num }}</a>
+          {% else %}
+            <span class="pg-ellipsis">…</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% if properties.has_next %}
+        <a href="{{ url_for('main.listings', **dict(search_params, page=properties.next_num)) }}"
+           class="pg-btn">Next <i class="bi bi-chevron-right"></i></a>
+      {% endif %}
+    </nav>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  /* ── Filter panel toggle ── */
+  const panel = document.getElementById('filterPanel');
+  const toggleBtn = document.getElementById('toggleFilters');
+  toggleBtn?.addEventListener('click', () => {
+    panel.classList.toggle('open');
+    toggleBtn.classList.toggle('active');
+  });
+
+  /* ── Sort select auto-submit ── */
+  document.getElementById('sortSelect')?.addEventListener('change', function() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('sort', this.value);
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+  });
+
+  /* ── Grid / List toggle ── */
+  const grid = document.getElementById('propGrid');
+  document.getElementById('gridViewBtn')?.addEventListener('click', function() {
+    grid.classList.remove('list-view');
+    this.classList.add('active');
+    document.getElementById('listViewBtn').classList.remove('active');
+  });
+  document.getElementById('listViewBtn')?.addEventListener('click', function() {
+    grid.classList.add('list-view');
+    this.classList.add('active');
+    document.getElementById('gridViewBtn').classList.remove('active');
+  });
+
+  /* ── Bed / Furnished button group ── */
+  document.querySelectorAll('.bed-btn input[type=radio]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      const group = this.closest('.bed-btns');
+      group.querySelectorAll('.bed-btn').forEach(b => b.classList.remove('active'));
+      this.closest('.bed-btn').classList.add('active');
+    });
+  });
+
+  /* ── Extras checkboxes ── */
+  document.querySelectorAll('.extra-check input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', function() {
+      this.closest('.extra-check').classList.toggle('active', this.checked);
+    });
+  });
+
+  /* ── Dual range slider ── */
+  const wrap = document.getElementById('rangeSliderWrap');
+  if (wrap) {
+    const thumbMin = document.getElementById('thumbMin');
+    const thumbMax = document.getElementById('thumbMax');
+    const fill     = document.getElementById('rangeFill');
+    const minInput = document.getElementById('minPriceInput');
+    const maxInput = document.getElementById('maxPriceInput');
+    const minDisp  = document.getElementById('priceMinDisplay');
+    const maxDisp  = document.getElementById('priceMaxDisplay');
+    const absMin   = parseFloat(wrap.dataset.min);
+    const absMax   = parseFloat(wrap.dataset.max);
+
+    function updateSlider() {
+      let lo = parseFloat(thumbMin.value);
+      let hi = parseFloat(thumbMax.value);
+      if (lo > hi) { lo = hi; thumbMin.value = lo; }
+      const pctLo = ((lo - absMin) / (absMax - absMin)) * 100;
+      const pctHi = ((hi - absMin) / (absMax - absMin)) * 100;
+      fill.style.left  = pctLo + '%';
+      fill.style.width = (pctHi - pctLo) + '%';
+      minInput.value = lo || '';
+      maxInput.value = hi >= absMax ? '' : hi;
+      minDisp.textContent = lo.toLocaleString();
+      maxDisp.textContent = hi.toLocaleString();
+    }
+
+    thumbMin.addEventListener('input', updateSlider);
+    thumbMax.addEventListener('input', updateSlider);
+    minInput.addEventListener('input', () => { thumbMin.value = minInput.value || absMin; updateSlider(); });
+    maxInput.addEventListener('input', () => { thumbMax.value = maxInput.value || absMax; updateSlider(); });
+    updateSlider();
+  }
+
+  /* ── Live search with suggestions ── */
+  const searchInput = document.getElementById('mainSearch');
+  const suggestBox  = document.getElementById('suggestionsBox');
+  const clearBtn    = document.getElementById('clearSearch');
+  let debounceTimer;
+
+  searchInput?.addEventListener('input', function() {
+    const val = this.value.trim();
+    clearBtn.style.display = val ? 'flex' : 'none';
+    clearTimeout(debounceTimer);
+    if (val.length < 2) { suggestBox.classList.remove('open'); return; }
+    debounceTimer = setTimeout(() => fetchSuggestions(val), 250);
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    suggestBox.classList.remove('open');
+    searchInput.focus();
+  });
+
+  function fetchSuggestions(term) {
+    fetch(`/search/suggestions?q=${encodeURIComponent(term)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.length) { suggestBox.classList.remove('open'); return; }
+        suggestBox.innerHTML = '';
+        let lastType = '';
+        data.forEach(item => {
+          if (item.type !== lastType) {
+            const hdr = document.createElement('div');
+            hdr.className = 'sg-header';
+            hdr.textContent = item.type === 'city' ? 'Cities' : 'Properties';
+            suggestBox.appendChild(hdr);
+            lastType = item.type;
+          }
+          const el = document.createElement('a');
+          el.className = 'sg-item';
+          el.href = item.type === 'city'
+            ? `/listings?city=${encodeURIComponent(item.value)}`
+            : `/property/${item.id}`;
+          el.innerHTML = `<i class="bi bi-${item.type === 'city' ? 'geo-alt' : 'house'}"></i> ${item.label}`;
+          suggestBox.appendChild(el);
+        });
+        suggestBox.classList.add('open');
+      });
+  }
+
+  /* Submit search on Enter */
+  searchInput?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      suggestBox.classList.remove('open');
+      const url = new URL(window.location.href);
+      url.searchParams.set('q', this.value.trim());
+      url.searchParams.set('page', '1');
+      window.location.href = url.toString();
+    }
+  });
+
+  /* Close suggestions on outside click */
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#searchWrap')) suggestBox.classList.remove('open');
+  });
+
+  /* Init clear btn visibility */
+  if (searchInput?.value) clearBtn.style.display = 'flex';
+
+  /* ── Near Me button ── */
+  document.getElementById('nearMeBtn')?.addEventListener('click', function () {
+    const btn = this;
+    btn.classList.add('loading');
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Locating...';
+
+    if (!navigator.geolocation) {
+      alert('Your browser does not support geolocation.');
+      btn.classList.remove('loading');
+      btn.innerHTML = '<i class="bi bi-cursor-fill"></i> Near Me';
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        window.location.href = `/nearby?lat=${lat}&lng=${lng}&radius=5`;
+      },
+      function (err) {
+        const msgs = {
+          1: 'Location access denied. Please allow location in browser settings.',
+          2: 'Location unavailable. Please try again.',
+          3: 'Location request timed out.',
+        };
+        alert(msgs[err.code] || 'Could not get your location.');
+        btn.classList.remove('loading');
+        btn.innerHTML = '<i class="bi bi-cursor-fill"></i> Near Me';
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+})();
+</script>
+{% endblock %}

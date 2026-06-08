@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-wrap">
+
+  <!-- ═══ LEFT PANEL ═══ -->
+  <div class="auth-panel-left">
+    <div class="apl-bg register-bg"></div>
+    <div class="apl-overlay"></div>
+    <div class="apl-content">
+
+      <a href="{{ url_for('main.index') }}" class="apl-logo">
+        <div class="apl-logo-icon"><i class="bi bi-house-fill"></i></div>
+        <div>
+          <div class="apl-logo-name">RentSathi</div>
+          <div class="apl-logo-sub">Nepal</div>
+        </div>
+      </a>
+
+      <div class="apl-headline">
+        <h1>Join<br>RentSathi<br>Nepal</h1>
+        <p>Nepal's #1 verified rental platform. Free to join, free to list.</p>
+      </div>
+
+      <div class="apl-features">
+        <div class="apl-feature"><i class="bi bi-patch-check-fill"></i> Verified property listings</div>
+        <div class="apl-feature"><i class="bi bi-chat-dots-fill"></i> Direct chat with owners</div>
+        <div class="apl-feature"><i class="bi bi-people-fill"></i> Roommate finder</div>
+        <div class="apl-feature"><i class="bi bi-geo-alt-fill"></i> GPS nearby search</div>
+        <div class="apl-feature"><i class="bi bi-heart-fill"></i> Save your favorites</div>
+      </div>
+
+      <div class="apl-stats">
+        <div class="apl-stat">
+          <span class="apl-stat-num">3,200+</span>
+          <span class="apl-stat-label">Listings</span>
+        </div>
+        <div class="apl-stat">
+          <span class="apl-stat-num">Free</span>
+          <span class="apl-stat-label">To Join</span>
+        </div>
+        <div class="apl-stat">
+          <span class="apl-stat-num">25+</span>
+          <span class="apl-stat-label">Cities</span>
+        </div>
+        <div class="apl-stat">
+          <span class="apl-stat-num">98%</span>
+          <span class="apl-stat-label">Verified</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT PANEL ═══ -->
+  <div class="auth-panel-right auth-panel-right--wide">
+    <div class="apr-inner">
+
+      <!-- Mobile logo -->
+      <a href="{{ url_for('main.index') }}" class="apr-mobile-logo">
+        <div class="brand-icon"><i class="bi bi-house-fill"></i></div>
+        <span style="font-weight:700;color:#111;">RentSathi Nepal</span>
+      </a>
+
+      <div class="apr-header">
+        <h2 class="apr-title">Create Account</h2>
+        <p class="apr-sub">Already have an account? <a href="{{ url_for('auth.login') }}" class="apr-link">Sign in</a></p>
+      </div>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for category, message in messages %}
+              <div class="auth-flash auth-flash-{{ 'danger' if category == 'error' else category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.register') }}" novalidate id="regForm">
+        {{ form.hidden_tag() }}
+
+        <!-- Role Selection -->
+        <div class="reg-section">
+          <div class="reg-section-label">I want to...</div>
+          <div class="role-selector">
+
+            <label class="role-option" for="roleUser">
+              <input type="radio" id="roleUser" name="role" value="user"
+                     {% if not form.role.data or form.role.data == 'user' %}checked{% endif %}>
+              <div class="role-opt-inner">
+                <div class="role-opt-icon" style="background:#eff6ff;color:#3b82f6;">
+                  <i class="bi bi-person-fill"></i>
+                </div>
+                <div class="role-opt-text">
+                  <span class="role-opt-title">Tenant / Roommate</span>
+                  <span class="role-opt-sub">Browse & rent properties</span>
+                </div>
+                <div class="role-opt-check"><i class="bi bi-check-circle-fill"></i></div>
+              </div>
+            </label>
+
+            <label class="role-option" for="roleOwner">
+              <input type="radio" id="roleOwner" name="role" value="owner"
+                     {% if form.role.data == 'owner' %}checked{% endif %}>
+              <div class="role-opt-inner">
+                <div class="role-opt-icon" style="background:#f0fdf4;color:#22c55e;">
+                  <i class="bi bi-buildings-fill"></i>
+                </div>
+                <div class="role-opt-text">
+                  <span class="role-opt-title">Landlord / Owner</span>
+                  <span class="role-opt-sub">Post & manage listings</span>
+                </div>
+                <div class="role-opt-check"><i class="bi bi-check-circle-fill"></i></div>
+              </div>
+            </label>
+
+          </div>
+          {% for e in form.role.errors %}
+            <div class="field-err-msg mt-1">{{ e }}</div>
+          {% endfor %}
+        </div>
+
+        <!-- Fields -->
+        <div class="reg-fields-grid">
+
+          <div class="field-group field-full">
+            <label class="field-label">Full Name</label>
+            <div class="field-wrap">
+              <i class="bi bi-person field-icon"></i>
+              {{ form.full_name(class="field-input"+(" field-error" if form.full_name.errors else ""),
+                 placeholder="Your full name") }}
+            </div>
+            {% for e in form.full_name.errors %}<div class="field-err-msg"><i class="bi bi-exclamation-circle me-1"></i>{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Email Address</label>
+            <div class="field-wrap">
+              <i class="bi bi-envelope field-icon"></i>
+              {{ form.email(class="field-input"+(" field-error" if form.email.errors else ""),
+                 placeholder="you@example.com") }}
+            </div>
+            {% for e in form.email.errors %}<div class="field-err-msg"><i class="bi bi-exclamation-circle me-1"></i>{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Phone <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
+            <div class="field-wrap">
+              <i class="bi bi-telephone field-icon"></i>
+              {{ form.phone(class="field-input", placeholder="+977-98XXXXXXXX") }}
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <div class="field-wrap">
+              <i class="bi bi-lock field-icon"></i>
+              {{ form.password(class="field-input"+(" field-error" if form.password.errors else ""),
+                 id="regPwd", placeholder="Min 6 characters",
+                 oninput="checkStrength(this.value)") }}
+              <button type="button" class="eye-btn" onclick="togglePwd('regPwd',this)" tabindex="-1">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="strength-bar-wrap" id="strengthWrap" style="display:none;">
+              <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+              <span class="strength-label" id="strengthLabel"></span>
+            </div>
+            {% for e in form.password.errors %}<div class="field-err-msg"><i class="bi bi-exclamation-circle me-1"></i>{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Confirm Password</label>
+            <div class="field-wrap">
+              <i class="bi bi-lock field-icon"></i>
+              {{ form.confirm_password(class="field-input"+(" field-error" if form.confirm_password.errors else ""),
+                 id="regConfirm", placeholder="Repeat password",
+                 oninput="checkMatch()") }}
+              <button type="button" class="eye-btn" onclick="togglePwd('regConfirm',this)" tabindex="-1">
+                <i class="bi bi-eye"></i>
+              </button>
+              <span id="matchIcon" style="position:absolute;right:38px;display:none;"></span>
+            </div>
+            {% for e in form.confirm_password.errors %}<div class="field-err-msg"><i class="bi bi-exclamation-circle me-1"></i>{{ e }}</div>{% endfor %}
+          </div>
+
+        </div>
+
+        <!-- Terms -->
+        <div class="terms-check-wrap">
+          <label class="remember-check">
+            <input type="checkbox" id="agreeTerms" required>
+            <span class="remember-box"></span>
+            <span class="remember-text">I agree to the <a href="#" class="apr-link">Terms of Service</a> and <a href="#" class="apr-link">Privacy Policy</a></span>
+          </label>
+        </div>
+
+        <button type="submit" class="auth-submit-btn" id="regSubmit">
+          <span>Create Account</span>
+          <i class="bi bi-arrow-right ms-2"></i>
+        </button>
+
+      </form>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function togglePwd(id, btn) {
+  const f = document.getElementById(id), i = btn.querySelector('i');
+  f.type = f.type === 'password' ? 'text' : 'password';
+  i.classList.toggle('bi-eye'); i.classList.toggle('bi-eye-slash');
+}
+
+function checkStrength(val) {
+  const wrap = document.getElementById('strengthWrap');
+  const fill = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+  if (!val) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  let s = 0;
+  if (val.length >= 6) s++;
+  if (val.length >= 10) s++;
+  if (/[A-Z]/.test(val)) s++;
+  if (/[0-9]/.test(val)) s++;
+  if (/[^A-Za-z0-9]/.test(val)) s++;
+  const lvls = [
+    {p:'20%',c:'#ef4444',t:'Very weak'},
+    {p:'40%',c:'#f97316',t:'Weak'},
+    {p:'60%',c:'#eab308',t:'Fair'},
+    {p:'80%',c:'#22c55e',t:'Strong'},
+    {p:'100%',c:'#16a34a',t:'Very strong'},
+  ];
+  const l = lvls[Math.min(s-1,4)] || lvls[0];
+  fill.style.width = l.p; fill.style.background = l.c;
+  label.textContent = l.t; label.style.color = l.c;
+}
+
+function checkMatch() {
+  const pwd = document.getElementById('regPwd');
+  const con = document.getElementById('regConfirm');
+  const ico = document.getElementById('matchIcon');
+  if (!con.value) { ico.style.display = 'none'; return; }
+  ico.style.display = 'flex';
+  ico.innerHTML = pwd.value === con.value
+    ? '<i class="bi bi-check-circle-fill" style="color:#22c55e;"></i>'
+    : '<i class="bi bi-x-circle-fill" style="color:#ef4444;"></i>';
+  con.classList.toggle('field-error', pwd.value !== con.value);
+}
+
+// Role card highlight
+function syncRoleCards() {
+  document.querySelectorAll('.role-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.querySelector('input').checked);
+  });
+}
+document.querySelectorAll('.role-option input').forEach(r => r.addEventListener('change', syncRoleCards));
+syncRoleCards();
+
+// Submit
+document.getElementById('regForm')?.addEventListener('submit', function(e) {
+  if (!document.getElementById('agreeTerms').checked) {
+    e.preventDefault();
+    document.querySelector('.terms-check-wrap').scrollIntoView({behavior:'smooth'});
+    document.querySelector('.terms-check-wrap .remember-check').style.color = '#ef4444';
+    return;
+  }
+  const b = document.getElementById('regSubmit');
+  b.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i>Creating account...';
+  b.disabled = true;
+  setTimeout(() => { b.disabled = false; }, 5000);
+});
+</script>
+{% endblock %}

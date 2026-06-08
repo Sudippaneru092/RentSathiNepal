@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="cp-page">
+  <div class="container">
+
+    <!-- Progress Header -->
+    <div class="cp-header">
+      <div class="cp-steps">
+        <div class="cp-step done">
+          <div class="cp-step-circle"><i class="bi bi-check-lg"></i></div>
+          <span>Account Created</span>
+        </div>
+        <div class="cp-step-line done"></div>
+        <div class="cp-step active">
+          <div class="cp-step-circle">2</div>
+          <span>Complete Profile</span>
+        </div>
+        <div class="cp-step-line"></div>
+        <div class="cp-step">
+          <div class="cp-step-circle">3</div>
+          <span>
+            {% if current_user.role == 'owner' %}List Property{% else %}Find a Home{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-body">
+
+      <!-- Left: Info panel -->
+      <div class="cp-info-panel">
+        <div class="cp-info-icon">
+          {% if current_user.role == 'owner' %}
+            <i class="bi bi-buildings-fill"></i>
+          {% else %}
+            <i class="bi bi-person-fill"></i>
+          {% endif %}
+        </div>
+        <h2 class="cp-info-title">
+          Hi, {{ current_user.full_name.split()[0] }}! 👋
+        </h2>
+        <p class="cp-info-desc">
+          {% if current_user.role == 'owner' %}
+            You're just one step away from listing your first property.
+            Complete your profile so tenants trust you.
+          {% else %}
+            A complete profile helps owners respond to you faster
+            and finds better matches for you.
+          {% endif %}
+        </p>
+
+        <div class="cp-why-list">
+          {% if current_user.role == 'owner' %}
+            <div class="cp-why-item">
+              <i class="bi bi-shield-check-fill"></i>
+              <span>Verified owners get 3× more inquiries</span>
+            </div>
+            <div class="cp-why-item">
+              <i class="bi bi-patch-check-fill"></i>
+              <span>Properties go live faster with a verified account</span>
+            </div>
+            <div class="cp-why-item">
+              <i class="bi bi-star-fill"></i>
+              <span>Build trust with tenants from day one</span>
+            </div>
+          {% else %}
+            <div class="cp-why-item">
+              <i class="bi bi-chat-dots-fill"></i>
+              <span>Owners respond faster to complete profiles</span>
+            </div>
+            <div class="cp-why-item">
+              <i class="bi bi-heart-fill"></i>
+              <span>Save favorites and get personalized matches</span>
+            </div>
+            <div class="cp-why-item">
+              <i class="bi bi-people-fill"></i>
+              <span>Find roommates that match your lifestyle</span>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="cp-skip-wrap">
+          <a href="{{ url_for('auth.skip_profile') }}" class="cp-skip-link">
+            Skip for now <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Right: Form -->
+      <div class="cp-form-panel">
+        <form method="POST" action="{{ url_for('auth.complete_profile') }}"
+              enctype="multipart/form-data" novalidate id="cpForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <!-- ── Section: Personal Info ── -->
+          <div class="cp-section">
+            <div class="cp-section-title">
+              <span class="cp-section-num">1</span> Personal Information
+            </div>
+            <div class="cp-fields">
+
+              <div class="cp-field cp-field-full">
+                <label>Full Name</label>
+                <div class="field-wrap">
+                  <i class="bi bi-person field-icon"></i>
+                  <input type="text" class="field-input" value="{{ current_user.full_name }}" disabled>
+                </div>
+                <small class="cp-field-note">Name from registration — contact support to change</small>
+              </div>
+
+              <div class="cp-field">
+                <label>Phone Number *</label>
+                <div class="field-wrap">
+                  <i class="bi bi-telephone field-icon"></i>
+                  <input type="tel" name="phone" class="field-input"
+                         value="{{ current_user.phone or '' }}"
+                         placeholder="+977-98XXXXXXXX" required>
+                </div>
+              </div>
+
+              <div class="cp-field">
+                <label>Gender</label>
+                <div class="field-wrap">
+                  <i class="bi bi-gender-ambiguous field-icon"></i>
+                  <select name="gender" class="field-input">
+                    <option value="">Select gender</option>
+                    {% for g in ['Male','Female','Other','Prefer not to say'] %}
+                      <option value="{{ g }}" {{ 'selected' if current_user.gender == g }}>{{ g }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="cp-field">
+                <label>Occupation</label>
+                <div class="field-wrap">
+                  <i class="bi bi-briefcase field-icon"></i>
+                  <input type="text" name="occupation" class="field-input"
+                         value="{{ current_user.occupation or '' }}"
+                         placeholder="e.g. Engineer, Student, Doctor">
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ── Section: Location ── -->
+          <div class="cp-section">
+            <div class="cp-section-title">
+              <span class="cp-section-num">2</span> Your Location
+            </div>
+            <div class="cp-fields">
+
+              <div class="cp-field">
+                <label>Province</label>
+                <div class="field-wrap">
+                  <i class="bi bi-map field-icon"></i>
+                  <select name="province" class="field-input" id="provinceSelect">
+                    <option value="">Select province</option>
+                    {% for p in ['Koshi','Madhesh','Bagmati','Gandaki','Lumbini','Karnali','Sudurpashchim'] %}
+                      <option value="{{ p }}" {{ 'selected' if current_user.province == p }}>{{ p }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <div class="cp-field">
+                <label>District</label>
+                <div class="field-wrap">
+                  <i class="bi bi-geo field-icon"></i>
+                  <input type="text" name="district" class="field-input"
+                         value="{{ current_user.district or '' }}"
+                         placeholder="e.g. Kathmandu, Kaski">
+                </div>
+              </div>
+
+              <div class="cp-field">
+                <label>City *</label>
+                <div class="field-wrap">
+                  <i class="bi bi-geo-alt field-icon"></i>
+                  <input type="text" name="city" class="field-input"
+                         value="{{ current_user.city or '' }}"
+                         placeholder="e.g. Kathmandu" required>
+                </div>
+              </div>
+
+              <div class="cp-field">
+                <label>Address</label>
+                <div class="field-wrap">
+                  <i class="bi bi-house field-icon"></i>
+                  <input type="text" name="address" class="field-input"
+                         value="{{ current_user.address or '' }}"
+                         placeholder="Street, tole, ward">
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {% if current_user.role == 'owner' %}
+          <!-- ── Section: Owner Details ── -->
+          <div class="cp-section">
+            <div class="cp-section-title">
+              <span class="cp-section-num">3</span> Owner Verification
+              <span class="cp-section-badge">Helps get verified faster</span>
+            </div>
+            <div class="cp-fields">
+
+              <div class="cp-field">
+                <label>Citizenship Number</label>
+                <div class="field-wrap">
+                  <i class="bi bi-card-text field-icon"></i>
+                  <input type="text" name="citizenship_number" class="field-input"
+                         value="{{ current_user.owner_profile.citizenship_number if current_user.owner_profile else '' }}"
+                         placeholder="e.g. 04012345678">
+                </div>
+              </div>
+
+              <div class="cp-field">
+                <label>Owner Type</label>
+                <div class="field-wrap">
+                  <i class="bi bi-person-badge field-icon"></i>
+                  <select name="owner_type" class="field-input">
+                    <option value="">Select type</option>
+                    <option value="individual" {{ 'selected' if current_user.owner_profile and current_user.owner_profile.owner_type == 'individual' }}>Individual Owner</option>
+                    <option value="agency" {{ 'selected' if current_user.owner_profile and current_user.owner_profile.owner_type == 'agency' }}>Real Estate Agency</option>
+                  </select>
+                </div>
+              </div>
+
+            </div>
+            <div class="cp-doc-note">
+              <i class="bi bi-info-circle me-1"></i>
+              You can upload citizenship documents from your owner profile after completing setup.
+              Admin verification usually takes 24–48 hours.
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Submit -->
+          <div class="cp-submit-row">
+            <button type="submit" class="cp-submit-btn" id="cpSubmit">
+              <i class="bi bi-check-circle me-2"></i>
+              Complete Profile
+              <span class="cp-submit-loader" style="display:none;">
+                <i class="bi bi-arrow-repeat spin ms-2"></i>
+              </span>
+            </button>
+            <a href="{{ url_for('auth.skip_profile') }}" class="cp-skip-btn">
+              Skip for now
+            </a>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('cpForm')?.addEventListener('submit', function() {
+  const btn = document.getElementById('cpSubmit');
+  btn.querySelector('.cp-submit-loader').style.display = 'inline';
+  btn.disabled = true;
+  setTimeout(() => btn.disabled = false, 5000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% macro prop_img(img_path, alt='Property', css_class='') %}
+  {% if img_path %}
+    {% if img_path.startswith('http') %}
+      <img src="{{ img_path }}" alt="{{ alt }}" class="{{ css_class }}" loading="lazy">
+    {% else %}
+      <img src="{{ url_for('static', filename=img_path) }}" alt="{{ alt }}" class="{{ css_class }}" loading="lazy">
+    {% endif %}
+  {% else %}
+    <div class="prop-img-placeholder"><i class="bi bi-house"></i></div>
+  {% endif %}
+{% endmacro %}

@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Welcome Header -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 bg-primary text-white rounded-3 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-3">
+                        {% if current_user.profile_image %}
+                            <img src="{{ url_for('static', filename=current_user.profile_image) }}"
+                                 class="rounded-circle border border-white border-2" width="64" height="64"
+                                 style="object-fit:cover;" alt="">
+                        {% else %}
+                            <div class="rounded-circle border border-white border-2 bg-white text-primary fw-bold
+                                        d-flex align-items-center justify-content-center flex-shrink-0"
+                                 style="width:64px;height:64px;font-size:1.5rem;">
+                                {{ current_user.full_name[0].upper() }}
+                            </div>
+                        {% endif %}
+                        <div>
+                            <h4 class="fw-bold mb-1">Hello, {{ current_user.full_name.split()[0] }}! 👋</h4>
+                            <p class="mb-0 opacity-75 small">
+                                {{ current_user.email }}
+                                {% if current_user.city %} &bull; {{ current_user.city }}{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h4 fw-bold text-danger mb-0">{{ fav_properties|length }}</div>
+                <small class="text-muted">Saved Properties</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h4 fw-bold text-info mb-0">{{ recent_messages|length }}</div>
+                <small class="text-muted">Messages</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{{ url_for('main.index') }}" class="card border-0 shadow-sm text-center p-3 text-decoration-none">
+                <div class="h4 fw-bold text-primary mb-0"><i class="bi bi-search"></i></div>
+                <small class="text-muted">Browse Rentals</small>
+            </a>
+        </div>
+        <div class="col-6 col-md-3">
+            <a href="{{ url_for('user.roommate_profile') }}" class="card border-0 shadow-sm text-center p-3 text-decoration-none">
+                <div class="h4 fw-bold text-success mb-0"><i class="bi bi-people"></i></div>
+                <small class="text-muted">Roommate Profile</small>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Saved Properties -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-heart-fill text-danger me-2"></i>Saved Properties</h6>
+                    <a href="{{ url_for('user.favorites') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if fav_properties %}
+                        <div class="row g-3">
+                            {% for prop in fav_properties %}
+                                <div class="col-sm-6">
+                                    <div class="card border h-100">
+                                        {% set img = prop.get_primary_image() %}
+                                        {% if img %}
+                                            <img src="{{ url_for('static', filename=img) }}"
+                                                 class="card-img-top" style="height:130px;object-fit:cover;" alt="">
+                                        {% else %}
+                                            <div class="bg-light d-flex align-items-center justify-content-center" style="height:130px;">
+                                                <i class="bi bi-house text-muted fs-2"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div class="card-body p-2">
+                                            <p class="fw-semibold small mb-1 text-truncate">{{ prop.title }}</p>
+                                            <p class="text-primary small mb-1 fw-bold">Rs. {{ "{:,.0f}".format(prop.price) }}/mo</p>
+                                            <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ prop.city }}</small>
+                                        </div>
+                                        <div class="card-footer bg-transparent border-top-0 p-2">
+                                            <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
+                                               class="btn btn-sm btn-outline-primary w-100">View</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-heart text-muted fs-1"></i>
+                            <p class="text-muted mt-2 mb-0">No saved properties yet</p>
+                            <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-primary mt-3">Browse Rentals</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Quick Links & Recent Messages -->
+        <div class="col-lg-4">
+            <!-- Quick Links -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="fw-semibold mb-0">Quick Actions</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('user.profile') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                        <i class="bi bi-person-circle text-primary fs-5"></i>
+                        <span>Edit Profile</span>
+                        <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+                    </a>
+                    <a href="{{ url_for('user.roommate_profile') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                        <i class="bi bi-people text-success fs-5"></i>
+                        <span>Roommate Profile</span>
+                        <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+                    </a>
+                    <a href="{{ url_for('user.favorites') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                        <i class="bi bi-heart text-danger fs-5"></i>
+                        <span>My Favorites</span>
+                        <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+                    </a>
+                    <a href="{{ url_for('user.messages') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                        <i class="bi bi-chat text-info fs-5"></i>
+                        <span>Messages</span>
+                        <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+                    </a>
+                    <a href="{{ url_for('main.index') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+                        <i class="bi bi-search text-warning fs-5"></i>
+                        <span>Browse Rentals</span>
+                        <i class="bi bi-chevron-right ms-auto text-muted small"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Messages -->
+            {% if recent_messages %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between">
+                        <h6 class="fw-semibold mb-0">Recent Messages</h6>
+                        <a href="{{ url_for('user.messages') }}" class="btn btn-sm btn-outline-primary">All</a>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for msg in recent_messages %}
+                            <div class="list-group-item py-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="fw-semibold">{{ msg.sender.full_name }}</small>
+                                    <small class="text-muted">{{ msg.sent_at.strftime('%b %d') }}</small>
+                                </div>
+                                <p class="small text-muted mb-0 text-truncate">{{ msg.message }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Admin Dashboard</h4>
+            <p class="text-muted mb-0">Welcome, {{ current_user.full_name }}</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h3 fw-bold text-primary mb-0">{{ total_users }}</div>
+                <small class="text-muted">Tenants</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h3 fw-bold text-success mb-0">{{ total_owners }}</div>
+                <small class="text-muted">Owners</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h3 fw-bold text-info mb-0">{{ total_properties }}</div>
+                <small class="text-muted">Properties</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h3 fw-bold text-warning mb-0">{{ pending_properties }}</div>
+                <small class="text-muted">Pending Review</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h3 fw-bold text-secondary mb-0">{{ pending_owners }}</div>
+                <small class="text-muted">Pending Owners</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card border-0 shadow-sm text-center p-3">
+                <div class="h3 fw-bold text-danger mb-0">{{ pending_reports }}</div>
+                <small class="text-muted">Reports</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nav Links -->
+    <div class="row g-3 mb-4">
+        {% set links = [
+            ('admin.properties', 'bi-buildings', 'primary', 'Properties'),
+            ('admin.users', 'bi-people', 'success', 'Users'),
+            ('admin.owners', 'bi-person-badge', 'info', 'Owners'),
+            ('admin.reports', 'bi-flag', 'danger', 'Reports'),
+            ('admin.amenities', 'bi-check-square', 'warning', 'Amenities'),
+            ('admin.logs', 'bi-journal-text', 'secondary', 'Activity Logs'),
+        ] %}
+        {% for route, icon, color, label in links %}
+            <div class="col-6 col-md-2">
+                <a href="{{ url_for(route) }}" class="card border-0 shadow-sm text-center p-3 text-decoration-none h-100">
+                    <i class="bi {{ icon }} fs-2 text-{{ color }} mb-2 d-block"></i>
+                    <small class="fw-semibold text-dark">{{ label }}</small>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="row g-4">
+        <!-- Pending Properties -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between py-3">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-buildings text-warning me-2"></i>Pending Properties</h6>
+                    <a href="{{ url_for('admin.properties', verification='pending') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% if recent_properties %}
+                        {% for prop in recent_properties %}
+                            <div class="list-group-item py-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold small">{{ prop.title }}</div>
+                                        <small class="text-muted">
+                                            {{ prop.city }} &bull; Rs. {{ "{:,.0f}".format(prop.price) }}/mo
+                                            &bull; {{ prop.owner.full_name }}
+                                        </small>
+                                    </div>
+                                    <div class="d-flex gap-1 ms-2">
+                                        <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="action" value="verify">
+                                            <button type="submit" class="btn btn-success btn-sm py-0">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-danger btn-sm py-0">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center py-4 text-muted">No pending properties</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Reports -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between py-3">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-flag text-danger me-2"></i>Recent Reports</h6>
+                    <a href="{{ url_for('admin.reports') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% if recent_reports %}
+                        {% for report in recent_reports %}
+                            <div class="list-group-item py-3">
+                                <div class="fw-semibold small">{{ report.property.title if report.property else 'N/A' }}</div>
+                                <small class="text-muted d-block mb-1">
+                                    Reported by {{ report.reporter.full_name }} &bull;
+                                    {{ report.created_at.strftime('%b %d, %Y') }}
+                                </small>
+                                <p class="small mb-0 text-truncate">{{ report.reason }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center py-4 text-muted">No pending reports</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between py-3">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-journal-text me-2"></i>Recent Activity</h6>
+                    <a href="{{ url_for('admin.logs') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Admin</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_logs %}
+                                {% for log in recent_logs %}
+                                    <tr>
+                                        <td class="ps-3 small fw-semibold">{{ log.admin.full_name }}</td>
+                                        <td><span class="badge bg-secondary-subtle text-secondary small">{{ log.action }}</span></td>
+                                        <td class="text-muted small">{{ log.description or '—' }}</td>
+                                        <td class="text-muted small">{{ log.created_at.strftime('%b %d %H:%M') }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr><td colspan="4" class="text-center text-muted py-3">No activity yet</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

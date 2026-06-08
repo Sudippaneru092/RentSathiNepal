@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="nearby-page">
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="nearby-header">
+      <div class="nearby-header-left">
+        <h1 class="nearby-title">
+          <i class="bi bi-geo-alt-fill text-danger me-2"></i>Properties Near Me
+        </h1>
+        {% if not waiting %}
+          <p class="nearby-subtitle">
+            Found <strong>{{ total }}</strong> propert{{ 'y' if total == 1 else 'ies' }}
+            within <strong>{{ radius|int }} km</strong> of your location
+          </p>
+        {% else %}
+          <p class="nearby-subtitle">Allow location access to find rentals near you</p>
+        {% endif %}
+      </div>
+
+      {% if not waiting %}
+      <!-- Radius & Type Controls -->
+      <div class="nearby-controls" id="nearbyControls">
+        <div class="nearby-control-group">
+          <label class="nc-label">Radius</label>
+          <div class="radius-btns">
+            {% for r in [1, 3, 5, 10, 20] %}
+            <button class="radius-btn {% if radius == r %}active{% endif %}"
+                    data-radius="{{ r }}">{{ r }} km</button>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="nearby-control-group">
+          <label class="nc-label">Type</label>
+          <select class="nc-select" id="nearbyType">
+            <option value="" {% if not ptype %}selected{% endif %}>All</option>
+            {% for t in ['room','flat','house','apartment','shutter','hostel'] %}
+            <option value="{{ t }}" {% if ptype == t %}selected{% endif %}>{{ t.capitalize() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <a href="{{ url_for('main.listings') }}" class="nc-listings-link">
+          <i class="bi bi-list-ul me-1"></i>All Listings
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if waiting %}
+    <!-- ── LOCATION PERMISSION SCREEN ── -->
+    <div class="location-permission-card">
+      <div class="lp-icon">
+        <div class="lp-pulse"></div>
+        <i class="bi bi-geo-alt-fill"></i>
+      </div>
+      <h2 class="lp-title">Find Rentals Near You</h2>
+      <p class="lp-desc">
+        We'll use your location to show properties sorted by distance.<br>
+        Your location is never stored or shared.
+      </p>
+      <div class="lp-features">
+        <div class="lp-feature"><i class="bi bi-check-circle-fill text-success"></i> Sorted by distance</div>
+        <div class="lp-feature"><i class="bi bi-check-circle-fill text-success"></i> Filter by radius (1–20 km)</div>
+        <div class="lp-feature"><i class="bi bi-check-circle-fill text-success"></i> Distance badge on every card</div>
+        <div class="lp-feature"><i class="bi bi-check-circle-fill text-success"></i> Works anywhere in Nepal</div>
+      </div>
+      <button class="btn-allow-location" id="allowLocationBtn">
+        <i class="bi bi-cursor-fill me-2"></i>Allow Location Access
+      </button>
+      <p class="lp-note">
+        <i class="bi bi-shield-lock me-1"></i>
+        Location only used for this search. Never stored.
+      </p>
+      <div class="lp-error" id="locationError"></div>
+    </div>
+
+    {% elif properties %}
+    <!-- ── RESULTS LAYOUT: Map + Cards ── -->
+    <div class="nearby-layout">
+
+      <!-- Map Panel -->
+      <div class="nearby-map-panel">
+        <div id="nearbyMap"></div>
+        <div class="map-recenter-btn" id="recenterBtn" title="Re-center map">
+          <i class="bi bi-cursor-fill"></i>
+        </div>
+      </div>
+
+      <!-- Cards Panel -->
+      <div class="nearby-cards-panel">
+        {% for item in properties %}
+        {% set prop = item.property %}
+        <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
+           class="nearby-card" data-id="{{ prop.id }}"
+           data-lat="{{ prop.latitude }}" data-lng="{{ prop.longitude }}">
+          <!-- Image -->
+          <div class="nc-img-wrap">
+            {% set img = prop.get_primary_image() %}
+            {% if img %}
+              <img src="{{ prop_img_url(img) }}" alt="{{ prop.title }}" loading="lazy">
+            {% else %}
+              <div class="nc-img-placeholder"><i class="bi bi-house"></i></div>
+            {% endif %}
+            <span class="nc-type-badge">{{ prop.property_type.capitalize() }}</span>
+            {% if prop.verification_status == 'verified' %}
+              <span class="nc-verified"><i class="bi bi-patch-check-fill"></i></span>
+            {% endif %}
+          </div>
+
+          <!-- Info -->
+          <div class="nc-info">
+            <div class="nc-title">{{ prop.title }}</div>
+            <div class="nc-location">
+              <i class="bi bi-geo-alt-fill text-danger"></i>
+              {{ prop.area or '' }}{% if prop.area and prop.city %}, {% endif %}{{ prop.city }}
+            </div>
+            <div class="nc-meta">
+              <span><i class="bi bi-door-open"></i> {{ prop.bedrooms }}Bed</span>
+              <span><i class="bi bi-droplet"></i> {{ prop.bathrooms }}Bath</span>
+              {% if prop.furnished %}<span><i class="bi bi-lamp"></i> Furnished</span>{% endif %}
+            </div>
+            <div class="nc-price-row">
+              <span class="nc-price">Rs. {{ "{:,.0f}".format(prop.price) }}<small>/mo</small></span>
+              <span class="nc-dist-badge">
+                <i class="bi bi-arrow-up-right-circle-fill"></i>
+                {{ item.distance_label }}
+              </span>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+
+    </div>
+
+    {% else %}
+    <!-- ── NO RESULTS ── -->
+    <div class="nearby-empty">
+      <div class="ne-icon"><i class="bi bi-map"></i></div>
+      <h3>No properties found nearby</h3>
+      <p>There are no verified listings within <strong>{{ radius|int }} km</strong> of your location.</p>
+      <div class="ne-actions">
+        <button class="ne-btn-radius" onclick="setRadius(10)">Try 10 km</button>
+        <button class="ne-btn-radius" onclick="setRadius(20)">Try 20 km</button>
+        <a href="{{ url_for('main.listings') }}" class="ne-btn-all">Browse All Listings</a>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% if not waiting %}
+<!-- Leaflet.js (free, no API key) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if waiting %}
+/* ── Location Permission Flow ── */
+document.getElementById('allowLocationBtn')?.addEventListener('click', function () {
+  const btn = this;
+  const errEl = document.getElementById('locationError');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i>Getting location...';
+  errEl.textContent = '';
+
+  if (!navigator.geolocation) {
+    showError('Your browser does not support geolocation.');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      window.location.href = `/nearby?lat=${lat}&lng=${lng}&radius=5`;
+    },
+    function (err) {
+      const msgs = {
+        1: 'Location access denied. Please allow location in your browser settings.',
+        2: 'Location unavailable. Check your connection and try again.',
+        3: 'Location request timed out. Please try again.',
+      };
+      showError(msgs[err.code] || 'Could not get your location.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-cursor-fill me-2"></i>Try Again';
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+
+  function showError(msg) {
+    errEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>${msg}`;
+  }
+});
+
+{% else %}
+/* ── Map + Radius/Type controls ── */
+const USER_LAT = {{ user_lat }};
+const USER_LNG = {{ user_lng }};
+let currentRadius = {{ radius }};
+
+// Init Leaflet map
+const map = L.map('nearbyMap', { zoomControl: true }).setView([USER_LAT, USER_LNG], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19,
+}).addTo(map);
+
+// User location marker (pulsing red)
+const userIcon = L.divIcon({
+  className: '',
+  html: '<div class="user-marker"><div class="user-marker-pulse"></div></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+L.marker([USER_LAT, USER_LNG], { icon: userIcon })
+  .addTo(map)
+  .bindPopup('<b>📍 Your Location</b>');
+
+// Radius circle
+let radiusCircle = L.circle([USER_LAT, USER_LNG], {
+  radius: currentRadius * 1000,
+  color: '#E8272A',
+  fillColor: '#E8272A',
+  fillOpacity: 0.07,
+  weight: 2,
+}).addTo(map);
+
+// Property markers
+const propIcon = L.divIcon({
+  className: '',
+  html: '<div class="prop-map-marker"><i class="bi bi-house-fill"></i></div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+});
+
+const markers = {};
+document.querySelectorAll('.nearby-card').forEach(card => {
+  const lat = parseFloat(card.dataset.lat);
+  const lng = parseFloat(card.dataset.lng);
+  const id  = card.dataset.id;
+  if (!lat || !lng) return;
+
+  const marker = L.marker([lat, lng], { icon: propIcon }).addTo(map);
+  const title  = card.querySelector('.nc-title')?.textContent || '';
+  const price  = card.querySelector('.nc-price')?.textContent || '';
+  const dist   = card.querySelector('.nc-dist-badge')?.textContent?.trim() || '';
+
+  marker.bindPopup(`
+    <div style="min-width:160px;">
+      <div style="font-weight:700;font-size:.9rem;margin-bottom:4px;">${title}</div>
+      <div style="color:#e8272a;font-weight:700;">${price}</div>
+      <div style="font-size:.75rem;color:#6b7280;margin-top:2px;">${dist}</div>
+      <a href="${card.getAttribute('href')}" style="display:block;margin-top:8px;color:#e8272a;font-size:.8rem;font-weight:600;">View Details →</a>
+    </div>
+  `);
+  markers[id] = marker;
+
+  // Click card → open marker popup + highlight card
+  card.addEventListener('click', function (e) {
+    e.preventDefault();
+    document.querySelectorAll('.nearby-card').forEach(c => c.classList.remove('active'));
+    this.classList.add('active');
+    map.setView([lat, lng], 15, { animate: true });
+    marker.openPopup();
+  });
+
+  // Hover card → bounce marker
+  card.addEventListener('mouseenter', () => marker.openPopup());
+  card.addEventListener('mouseleave', () => marker.closePopup());
+});
+
+// Re-center button
+document.getElementById('recenterBtn')?.addEventListener('click', () => {
+  map.setView([USER_LAT, USER_LNG], 13, { animate: true });
+});
+
+// Radius buttons
+document.querySelectorAll('.radius-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.radius-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    setRadius(parseFloat(this.dataset.radius));
+  });
+});
+
+function setRadius(r) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('radius', r);
+  url.searchParams.set('lat', USER_LAT);
+  url.searchParams.set('lng', USER_LNG);
+  window.location.href = url.toString();
+}
+
+// Type select
+document.getElementById('nearbyType')?.addEventListener('change', function () {
+  const url = new URL(window.location.href);
+  url.searchParams.set('property_type', this.value);
+  url.searchParams.set('lat', USER_LAT);
+  url.searchParams.set('lng', USER_LNG);
+  window.location.href = url.toString();
+});
+
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ===== HERO ===== -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-7">
+                <div class="hero-badge">
+                    <span>✨</span> Nepal's #1 Verified Rental Platform
+                </div>
+
+                <h1 class="hero-title">
+                    Find Your Perfect<br>
+                    <span class="accent">Home in Nepal</span>
+                </h1>
+
+                <p class="hero-subtitle">
+                    Discover verified rooms, flats, houses, and commercial spaces across
+                    Kathmandu, Pokhara, Butwal, and more.
+                </p>
+
+                <!-- Search Bar -->
+                <form method="GET" action="{{ url_for('main.index') }}">
+                    <div class="hero-search-box">
+                        <select name="property_type">
+                            <option value="">All</option>
+                            <option value="room" {% if search_params.property_type == 'room' %}selected{% endif %}>Room</option>
+                            <option value="flat" {% if search_params.property_type == 'flat' %}selected{% endif %}>Flat</option>
+                            <option value="house" {% if search_params.property_type == 'house' %}selected{% endif %}>House</option>
+                            <option value="apartment" {% if search_params.property_type == 'apartment' %}selected{% endif %}>Apartment</option>
+                            <option value="shutter" {% if search_params.property_type == 'shutter' %}selected{% endif %}>Shutter</option>
+                            <option value="hostel" {% if search_params.property_type == 'hostel' %}selected{% endif %}>Hostel</option>
+                        </select>
+                        <input type="text" name="city" class="search-input"
+                               placeholder="Search by location, city, or property name..."
+                               value="{{ search_params.city }}">
+                        <button type="submit" class="btn-find-rental">
+                            <i class="bi bi-search"></i> Find Rental
+                        </button>
+                    </div>
+                </form>
+
+                <!-- City Pills -->
+                <div class="city-pills">
+                    {% for city in ['Kathmandu','Pokhara','Lalitpur','Butwal','Dhangadhi'] %}
+                <a href="{{ url_for('main.listings', city=city) }}"
+                           class="city-pill {% if search_params.city == city %}active{% endif %}">
+                            {{ city }}
+                        </a>
+                    {% endfor %}
+                </div>
+
+                <!-- CTA Buttons -->
+                <div class="hero-cta-row">
+                    <a href="{{ url_for('main.listings') }}" class="btn-browse">
+                        <i class="bi bi-search"></i> Browse All Listings
+                    </a>
+                    <a href="{{ url_for('main.nearby') }}" class="btn-post-property" id="heroNearMe">
+                        <i class="bi bi-cursor-fill"></i> Near Me
+                    </a>
+                    <a href="{{ url_for('owner.add_property') if current_user.is_authenticated and current_user.role == 'owner' else url_for('auth.register') }}"
+                       class="btn-post-property">
+                        <i class="bi bi-house"></i> Post Your Property
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== STATS ===== -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row g-0">
+            <div class="col-6 col-md-3">
+                <div class="stat-item">
+                    <span class="stat-icon text-primary"><i class="bi bi-houses"></i></span>
+                    <span class="stat-num">3,200+</span>
+                    <span class="stat-label">Properties Listed</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-item">
+                    <span class="stat-icon text-success"><i class="bi bi-people"></i></span>
+                    <span class="stat-num">12,000+</span>
+                    <span class="stat-label">Happy Tenants</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-item">
+                    <span class="stat-icon" style="color:#a855f7"><i class="bi bi-geo-alt"></i></span>
+                    <span class="stat-num">25+</span>
+                    <span class="stat-label">Cities Covered</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-item">
+                    <span class="stat-icon text-danger"><i class="bi bi-patch-check"></i></span>
+                    <span class="stat-num">98%</span>
+                    <span class="stat-label">Verified Listings</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== BROWSE BY CATEGORY ===== -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 class="section-title">Browse by Category</h2>
+            <p class="section-sub">Find exactly what you're looking for</p>
+        </div>
+        <div class="row g-3 justify-content-center">
+            {% set categories = [
+                ('room',      'bi-door-open',   '#3b82f6', '840'),
+                ('flat',      'bi-building',    '#8b5cf6', '820'),
+                ('house',     'bi-house',       '#22c55e', '410'),
+                ('apartment', 'bi-buildings',   '#f97316', '380'),
+                ('shutter',   'bi-shop',        '#ec4899', '290'),
+                ('hostel',    'bi-person-lines-fill', '#14b8a6', '180')
+            ] %}
+            {% for type, icon, color, count in categories %}
+            <div class="col-6 col-sm-4 col-md-2">
+                <a href="{{ url_for('main.listings', property_type=type) }}" class="category-card">
+                    <div class="category-icon-wrap" style="background:{{ color }};">
+                        <i class="bi {{ icon }}"></i>
+                    </div>
+                    <div class="category-name">{{ type.capitalize() }}</div>
+                    <div class="category-count">{{ count }} listings</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===== FEATURED PROPERTIES ===== -->
+{% if properties.items %}
+<section class="py-5">
+    <div class="container">
+        <div class="section-header-row">
+            <div>
+                <h2 class="section-title mb-1">Featured Properties</h2>
+                <p class="section-sub mb-0">Hand-picked verified listings</p>
+            </div>
+            <a href="{{ url_for('main.index') }}" class="view-all-link">
+                View All <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="row g-4">
+            {% for property in properties.items %}
+            <div class="col-md-6 col-lg-4">
+                <div class="prop-card">
+                    <!-- Image -->
+                    <div class="prop-img-wrap">
+                        {% set img = property.get_primary_image() %}
+                        {% if img %}
+                            <img src="{{ prop_img_url(img) }}" alt="{{ property.title }}">
+                        {% else %}
+                            <div class="prop-img-placeholder"><i class="bi bi-house"></i></div>
+                        {% endif %}
+
+                        <!-- Badges top-left -->
+                        <div class="prop-badge-tl">
+                            {% if property.verification_status == 'verified' %}
+                                <span class="badge-verified"><i class="bi bi-check-circle-fill"></i> Verified</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Type badge bottom-left -->
+                        <span class="badge-type">{{ property.property_type.capitalize() }}</span>
+
+                        <!-- Favorite button -->
+                        {% if current_user.is_authenticated and current_user.role == 'user' %}
+                            <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=property.id) }}" style="display:contents;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit"
+                                        class="btn-fav {% if property.id in favorite_ids %}active{% endif %}"
+                                        title="{% if property.id in favorite_ids %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                                    <i class="bi bi-heart{% if property.id in favorite_ids %}-fill{% endif %}"></i>
+                                </button>
+                            </form>
+                        {% else %}
+                            <a href="{{ url_for('auth.login') }}" class="btn-fav" title="Save">
+                                <i class="bi bi-heart"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Body -->
+                    <div class="prop-body">
+                        <div class="d-flex align-items-start justify-content-between gap-2">
+                            <div class="prop-title">{{ property.title }}</div>
+                            {% set avg = property.average_rating() %}
+                            {% if avg > 0 %}
+                                <span class="prop-rating flex-shrink-0">
+                                    <i class="bi bi-star-fill text-warning"></i> {{ avg }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="prop-location">
+                            <i class="bi bi-geo-alt-fill text-danger"></i>
+                            {{ property.area or property.district or '' }}{% if (property.area or property.district) and property.city %}, {% endif %}{{ property.city }}
+                        </div>
+
+                        <div class="prop-meta">
+                            <span><i class="bi bi-door-open"></i> {{ property.bedrooms }} Bed</span>
+                            <span><i class="bi bi-droplet"></i> {{ property.bathrooms }} Bath</span>
+                            {% if property.area %}<span><i class="bi bi-aspect-ratio"></i> {{ property.area }} sq.ft</span>{% endif %}
+                        </div>
+
+                        <div class="prop-amenities">
+                            {% if property.furnished %}<span class="amenity-chip"><i class="bi bi-lamp"></i> Furnished</span>{% endif %}
+                            {% if property.parking %}<span class="amenity-chip"><i class="bi bi-car-front"></i> Parking</span>{% endif %}
+                            {% for pa in property.amenities.limit(2).all() %}
+                                <span class="amenity-chip">{{ pa.amenity.amenity_name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <a href="{{ url_for('main.property_detail', property_id=property.id) }}"
+                       class="prop-footer text-decoration-none">
+                        <span class="prop-price">Rs. {{ "{:,.0f}".format(property.price) }}<small>/mo</small></span>
+                        <span class="prop-owner">
+                            <span class="owner-avatar">{{ property.owner.full_name[0].upper() }}</span>
+                            {{ property.owner.full_name.split()[0] }}
+                        </span>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if properties.pages > 1 %}
+        <nav class="mt-5 d-flex justify-content-center">
+            <ul class="pagination gap-1">
+                <li class="page-item {% if not properties.has_prev %}disabled{% endif %}">
+                    <a class="page-link rounded-3" href="{{ url_for('main.index', page=properties.prev_num, **search_params) }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% for num in properties.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if num %}
+                        <li class="page-item {% if num == properties.page %}active{% endif %}">
+                            <a class="page-link rounded-3" href="{{ url_for('main.index', page=num, **search_params) }}">{{ num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link rounded-3">…</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not properties.has_next %}disabled{% endif %}">
+                    <a class="page-link rounded-3" href="{{ url_for('main.index', page=properties.next_num, **search_params) }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<!-- ===== EXPLORE BY CITY ===== -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 class="section-title">Explore by City</h2>
+            <p class="section-sub">Properties available across Nepal</p>
+        </div>
+        <div class="row g-3">
+            {% set cities = [
+                ('Kathmandu', 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?w=400&q=80', '1240'),
+                ('Pokhara',   'https://images.unsplash.com/photo-1585108011238-f33239534ba1?w=400&q=80', '680'),
+                ('Lalitpur',  'https://images.unsplash.com/photo-1614531341773-3bff8b7cb3fc?w=400&q=80', '520'),
+                ('Butwal',    'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=400&q=80', '310'),
+                ('Dhangadhi', 'https://images.unsplash.com/photo-1526711657229-e7e080ed7aa1?w=400&q=80', '180'),
+                ('Chitwan',   'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&q=80', '290')
+            ] %}
+            {% for name, img, count in cities %}
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{{ url_for('main.listings', city=name) }}" class="city-card">
+                    <img src="{{ img }}" alt="{{ name }}">
+                    <div class="city-card-overlay">
+                        <div class="city-card-name">{{ name }}</div>
+                        <div class="city-card-count">{{ count }} properties</div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===== WHY CHOOSE RENTSATHI ===== -->
+<section class="py-5" id="about">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Why Choose RentSathi?</h2>
+            <p class="section-sub">Everything you need for a smooth rental experience</p>
+        </div>
+        <div class="row g-4">
+            {% set features = [
+                ('bi-shield-check',     '#3b82f6', '#eff6ff',  'Verified Listings',    'Every property is verified by our admin team before going live.'),
+                ('bi-geo-alt',          '#22c55e', '#f0fdf4',  'GPS Nearby Search',    'Find properties near you using real-time GPS location.'),
+                ('bi-chat-dots',        '#8b5cf6', '#f5f3ff',  'Real-Time Chat',       'Chat directly with landlords without sharing personal info.'),
+                ('bi-lightning-charge', '#eab308', '#fefce8',  'Instant Booking',      'Send booking requests and get responses within hours.'),
+                
+            ] %}
+            {% for icon, iconColor, bgColor, title, desc in features %}
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background:{{ bgColor }}; color:{{ iconColor }};">
+                        <i class="bi {{ icon }}"></i>
+                    </div>
+                    <div class="feature-title">{{ title }}</div>
+                    <p class="feature-desc">{{ desc }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===== ROOMMATE BANNER ===== -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="roommate-banner">
+            <div>
+                <span class="roommate-badge"><i class="bi bi-people me-1"></i> New Feature</span>
+                <h2 class="roommate-title">Find a Roommate</h2>
+                <p class="roommate-desc">
+                    Looking to split rent? Connect with verified students and<br>
+                    professionals across Nepal.
+                </p>
+                <div class="roommate-checks">
+                    <span><i class="bi bi-check2"></i> 2,400+ active profiles</span>
+                    <span><i class="bi bi-check2"></i> Verified users</span>
+                    <span><i class="bi bi-check2"></i> Free to use</span>
+                </div>
+            </div>
+            <div class="roommate-btns">
+                <a href="{{ url_for('auth.register') }}" class="btn-roommate-white">
+                    <i class="bi bi-people"></i> Find Roommates
+                </a>
+                <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.register') }}"
+                   class="btn-roommate-outline">
+                    <i class="bi bi-person-plus"></i> Post Your Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== TESTIMONIALS ===== -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">What Our Users Say</h2>
+            <p class="section-sub">Trusted by thousands across Nepal</p>
+        </div>
+        <div class="row g-4">
+            {% set testimonials = [
+                ('Anita Maharjan',  'Tenant · Kathmandu', 'AM', '"RentSathi made finding my flat so easy! The verified listings gave me confidence and I found my perfect home in just 3 days. The GPS search feature is amazing!"'),
+                ('Rajesh Tamang',   'Landlord · Pokhara', 'RT', '"As a landlord, managing my properties has never been easier. I get genuine tenant requests and the digital agreement feature saves so much time."'),
+                ('Priya Adhikari',  'Tenant · Lalitpur',  'PA', '"The roommate finder feature helped me find a compatible flatmate. The platform is very user-friendly and the chat system works great!"'),
+                ('Suresh KC',       'Landlord · Butwal',  'SK', '"I listed my property and got a tenant within a week. The admin verification process builds trust with tenants. Highly recommended!"')
+            ] %}
+            {% for name, role, initials, text in testimonials %}
+            <div class="col-md-6 col-lg-3">
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="testimonial-text">{{ text }}</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">{{ initials }}</div>
+                        <div>
+                            <div class="testimonial-name">{{ name }}</div>
+                            <div class="testimonial-role">{{ role }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="py-5 faq-section bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <p class="section-sub">Everything you need to know</p>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                {% set faqs = [
+                    ('How do I list my property on RentSathi?', 'Register as an owner, complete your profile with citizenship verification, then click "Add Property" from your dashboard. Fill in the details, upload photos, and submit for admin review.'),
+                    ('Are all property listings verified?', 'Yes. Every listing goes through our admin verification process before going live. We check ownership documents and property photos to ensure authenticity.'),
+                    ('How does the GPS nearby search work?', 'Allow location access when prompted, and our system will show properties within your selected radius. You can adjust the distance filter from the map view.'),
+                    ('What payment methods are supported?', 'Currently, rental payments are handled directly between tenants and landlords. We support eSewa, Khalti, and bank transfer documentation through our platform.'),
+                    ('Can I generate a rental agreement online?', 'Yes! Both landlords and tenants can generate a standard rental agreement PDF from the property booking section, pre-filled with the agreed terms.'),
+                    ('How does the roommate finder work?', 'Create a roommate profile with your preferences (city, budget, lifestyle). Browse other profiles and send connection requests to potential roommates.')
+                ] %}
+                {% for q, a in faqs %}
+                <div class="faq-item">
+                    <button class="faq-question">
+                        {{ q }}
+                        <i class="bi bi-chevron-down faq-icon"></i>
+                    </button>
+                    <div class="faq-answer">{{ a }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== CTA DARK ===== -->
+<section class="cta-dark" id="contact">
+    <div class="container">
+        <div class="cta-dark-icon"><i class="bi bi-graph-up-arrow"></i></div>
+        <h2>Ready to Find Your Next Home?</h2>
+        <p>Join 12,000+ happy tenants and landlords on RentSathi Nepal</p>
+        <div class="cta-dark-btns">
+            <a href="{{ url_for('main.listings') }}" class="btn-cta-red">
+                <i class="bi bi-search"></i> Find Rental Now
+            </a>
+            <a href="{{ url_for('owner.add_property') if current_user.is_authenticated and current_user.role == 'owner' else url_for('auth.register') }}"
+               class="btn-cta-outline">
+                <i class="bi bi-house"></i> Post Property Free
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer-dark">
+    <div class="container">
+        <div class="row g-4">
+            <!-- Brand -->
+            <div class="col-lg-3 col-md-6">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="brand-icon" style="width:32px;height:32px;font-size:0.9rem;">
+                        <i class="bi bi-house-fill"></i>
+                    </div>
+                    <div>
+                        <div class="footer-brand-name">RentSathi</div>
+                        <div class="footer-brand-sub">Nepal</div>
+                    </div>
+                </div>
+                <p class="footer-desc">
+                    Nepal's smartest rental platform. Find verified rooms, flats, houses, and
+                    commercial spaces across Nepal.
+                </p>
+                <div class="footer-socials">
+                    <a href="#" class="social-btn">FB</a>
+                    <a href="#" class="social-btn">TW</a>
+                    <a href="#" class="social-btn">IG</a>
+                    <a href="#" class="social-btn">YT</a>
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="col-lg-2 col-md-6 col-6">
+                <div class="footer-heading">Quick Links</div>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('main.index') }}">Home</a></li>
+                    <li><a href="{{ url_for('main.listings') }}">Browse Listings</a></li>
+                    <li><a href="#">Roommate Finder</a></li>
+                    <li><a href="#">Map View</a></li>
+                    <li><a href="#">About Us</a></li>
+                </ul>
+            </div>
+
+            <!-- Property Types -->
+            <div class="col-lg-2 col-md-6 col-6">
+                <div class="footer-heading">Property Types</div>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('main.listings', property_type='room') }}">Rooms</a></li>
+                    <li><a href="{{ url_for('main.listings', property_type='flat') }}">Flats</a></li>
+                    <li><a href="{{ url_for('main.listings', property_type='house') }}">Houses</a></li>
+                    <li><a href="{{ url_for('main.listings', property_type='apartment') }}">Apartments</a></li>
+                    <li><a href="{{ url_for('main.listings', property_type='shutter') }}">Shutters</a></li>
+                    <li><a href="{{ url_for('main.listings', property_type='hostel') }}">Hostels</a></li>
+                </ul>
+            </div>
+
+            <!-- Contact -->
+            <div class="col-lg-3 col-md-6">
+                <div class="footer-heading">Contact Us</div>
+                <div class="footer-contact-item"><i class="bi bi-geo-alt-fill text-danger"></i> Thamel, Kathmandu, Nepal</div>
+                <div class="footer-contact-item"><i class="bi bi-telephone-fill text-danger"></i> +977-1-4567890</div>
+                <div class="footer-contact-item"><i class="bi bi-envelope-fill text-danger"></i> info@rentsathi.com.np</div>
+                <div class="footer-heading mt-3">Subscribe to our newsletter</div>
+                <div class="footer-newsletter">
+                    <input type="email" placeholder="Your email">
+                    <button><i class="bi bi-send-fill"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <hr class="footer-divider">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
+            <p class="footer-copy mb-0">&copy; 2026 RentSathi Nepal. All rights reserved.</p>
+            <p class="footer-copy mb-0">
+                <a href="#">Privacy Policy</a> &nbsp;·&nbsp;
+                <a href="#">Terms of Service</a>
+            </p>
+        </div>
+    </div>
+</footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('heroNearMe')?.addEventListener('click', function(e) {
+  if (!navigator.geolocation) return; // fallback to /nearby page
+  e.preventDefault();
+  const btn = this;
+  btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Locating...';
+  btn.style.pointerEvents = 'none';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      window.location.href = `/nearby?lat=${lat}&lng=${lng}&radius=5`;
+    },
+    () => { window.location.href = '/nearby'; }
+  );
+});
+</script>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="fw-bold mb-0">Add New Property</h4>
+                    <p class="text-muted small mb-0">Fill in the details below to list your property</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('owner.add_property') }}"
+                  enctype="multipart/form-data" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Section 1: Basic Info -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0"><i class="bi bi-info-circle me-2 text-primary"></i>Basic Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Property Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="title"
+                                   value="{{ form_data.get('title', '') }}"
+                                   placeholder="e.g., 2BHK Apartment in Lazimpat" required>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Property Type <span class="text-danger">*</span></label>
+                                <select class="form-select" name="property_type" required>
+                                    <option value="">Select Type</option>
+                                    {% for ptype in ['apartment', 'house', 'room', 'flat', 'office', 'shop', 'land'] %}
+                                        <option value="{{ ptype }}"
+                                                {% if form_data.get('property_type') == ptype %}selected{% endif %}
+                                                class="text-capitalize">{{ ptype.capitalize() }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Monthly Rent (NPR) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Rs.</span>
+                                    <input type="number" class="form-control" name="price"
+                                           value="{{ form_data.get('price', '') }}"
+                                           placeholder="15000" min="0" step="100" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" name="description" rows="4"
+                                      placeholder="Describe your property, nearby landmarks, house rules, etc.">{{ form_data.get('description', '') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Location -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0"><i class="bi bi-geo-alt me-2 text-primary"></i>Location</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Province</label>
+                                <select class="form-select" name="province">
+                                    <option value="">Select Province</option>
+                                    <option value="Koshi" {% if form_data.get('province') == 'Koshi' %}selected{% endif %}>Koshi</option>
+                                    <option value="Madhesh" {% if form_data.get('province') == 'Madhesh' %}selected{% endif %}>Madhesh</option>
+                                    <option value="Bagmati" {% if form_data.get('province') == 'Bagmati' %}selected{% endif %}>Bagmati</option>
+                                    <option value="Gandaki" {% if form_data.get('province') == 'Gandaki' %}selected{% endif %}>Gandaki</option>
+                                    <option value="Lumbini" {% if form_data.get('province') == 'Lumbini' %}selected{% endif %}>Lumbini</option>
+                                    <option value="Karnali" {% if form_data.get('province') == 'Karnali' %}selected{% endif %}>Karnali</option>
+                                    <option value="Sudurpashchim" {% if form_data.get('province') == 'Sudurpashchim' %}selected{% endif %}>Sudurpashchim</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">District</label>
+                                <input type="text" class="form-control" name="district"
+                                       value="{{ form_data.get('district', '') }}" placeholder="e.g., Kathmandu">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="city"
+                                       value="{{ form_data.get('city', '') }}" placeholder="e.g., Kathmandu" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Area / Locality</label>
+                                <input type="text" class="form-control" name="area"
+                                       value="{{ form_data.get('area', '') }}" placeholder="e.g., Lazimpat, Baneshwor">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Full Address</label>
+                                <input type="text" class="form-control" name="address"
+                                       value="{{ form_data.get('address', '') }}" placeholder="Street address">
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Latitude <small class="text-muted">(optional)</small></label>
+                                <input type="number" class="form-control" name="latitude"
+                                       value="{{ form_data.get('latitude', '') }}"
+                                       placeholder="e.g., 27.7172" step="any">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Longitude <small class="text-muted">(optional)</small></label>
+                                <input type="number" class="form-control" name="longitude"
+                                       value="{{ form_data.get('longitude', '') }}"
+                                       placeholder="e.g., 85.3240" step="any">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Property Features -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0"><i class="bi bi-house-gear me-2 text-primary"></i>Property Features</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Bedrooms</label>
+                                <input type="number" class="form-control" name="bedrooms"
+                                       value="{{ form_data.get('bedrooms', '0') }}" min="0" max="20">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Bathrooms</label>
+                                <input type="number" class="form-control" name="bathrooms"
+                                       value="{{ form_data.get('bathrooms', '0') }}" min="0" max="20">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Furnished?</label>
+                                <select class="form-select" name="furnished">
+                                    <option value="0" {% if form_data.get('furnished') != '1' %}selected{% endif %}>Unfurnished</option>
+                                    <option value="1" {% if form_data.get('furnished') == '1' %}selected{% endif %}>Furnished</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Parking?</label>
+                                <select class="form-select" name="parking">
+                                    <option value="0" {% if form_data.get('parking') != '1' %}selected{% endif %}>No Parking</option>
+                                    <option value="1" {% if form_data.get('parking') == '1' %}selected{% endif %}>Parking Available</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Amenities -->
+                        {% if amenities %}
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Amenities</label>
+                                <div class="row g-2">
+                                    {% for amenity in amenities %}
+                                        <div class="col-6 col-md-4 col-lg-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="amenities" value="{{ amenity.id }}"
+                                                       id="amenity_{{ amenity.id }}">
+                                                <label class="form-check-label small" for="amenity_{{ amenity.id }}">
+                                                    {{ amenity.amenity_name }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Section 4: Images & Documents -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0"><i class="bi bi-images me-2 text-primary"></i>Images & Documents</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Property Images</label>
+                            <small class="text-muted d-block mb-2">Upload up to 10 images (JPG, PNG, GIF — max 16MB each)</small>
+                            <input type="file" class="form-control" name="images"
+                                   accept="image/*" multiple id="imagesInput">
+                            <!-- Preview -->
+                            <div id="imagePreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Supporting Document</label>
+                                <small class="text-muted d-block mb-2">Ownership proof, lalpurja, etc. (PDF or image)</small>
+                                <input type="file" class="form-control" name="document"
+                                       accept=".pdf,image/*">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Document Type</label>
+                                <select class="form-select" name="document_type">
+                                    <option value="">Select Type</option>
+                                    <option value="lalpurja">Lalpurja</option>
+                                    <option value="ownership_certificate">Ownership Certificate</option>
+                                    <option value="tax_clearance">Tax Clearance</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 justify-content-end">
+                    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-5">
+                        <i class="bi bi-plus-circle me-2"></i>Add Property
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('imagesInput').addEventListener('change', function () {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    Array.from(this.files).slice(0, 10).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'rounded';
+            img.style.cssText = 'width:80px;height:70px;object-fit:cover;';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    });
+});
+</script>
+{% endblock %}

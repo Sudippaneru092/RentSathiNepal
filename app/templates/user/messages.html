@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="fw-bold mb-0">Messages</h4>
+    </div>
+
+    <div class="row g-4">
+        <!-- Received Messages -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="fw-semibold mb-0">
+                        <i class="bi bi-inbox me-2 text-primary"></i>Received
+                        <span class="badge bg-primary ms-2">{{ received|length }}</span>
+                    </h6>
+                </div>
+                <div class="list-group list-group-flush" style="max-height:500px;overflow-y:auto;">
+                    {% if received %}
+                        {% for msg in received %}
+                            <div class="list-group-item py-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="fw-semibold small">{{ msg.sender.full_name }}</span>
+                                    <small class="text-muted">{{ msg.sent_at.strftime('%b %d, %Y %H:%M') }}</small>
+                                </div>
+                                {% if msg.property %}
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="bi bi-house me-1"></i>
+                                        <a href="{{ url_for('main.property_detail', property_id=msg.property_id) }}"
+                                           class="text-muted text-decoration-none">{{ msg.property.title }}</a>
+                                    </small>
+                                {% endif %}
+                                <p class="small mb-0">{{ msg.message }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>No messages received
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sent Messages -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="fw-semibold mb-0">
+                        <i class="bi bi-send me-2 text-success"></i>Sent
+                        <span class="badge bg-success ms-2">{{ sent|length }}</span>
+                    </h6>
+                </div>
+                <div class="list-group list-group-flush" style="max-height:500px;overflow-y:auto;">
+                    {% if sent %}
+                        {% for msg in sent %}
+                            <div class="list-group-item py-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="fw-semibold small">To: {{ msg.receiver.full_name }}</span>
+                                    <small class="text-muted">{{ msg.sent_at.strftime('%b %d, %Y %H:%M') }}</small>
+                                </div>
+                                {% if msg.property %}
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="bi bi-house me-1"></i>
+                                        <a href="{{ url_for('main.property_detail', property_id=msg.property_id) }}"
+                                           class="text-muted text-decoration-none">{{ msg.property.title }}</a>
+                                    </small>
+                                {% endif %}
+                                <p class="small mb-0">{{ msg.message }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item text-center py-4 text-muted">
+                            <i class="bi bi-send fs-2 d-block mb-2"></i>No messages sent
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

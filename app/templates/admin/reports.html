@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="fw-bold mb-0">Reports</h4>
+    </div>
+
+    <!-- Filter tabs -->
+    <ul class="nav nav-tabs mb-4">
+        {% for s in ['pending', 'reviewed', 'resolved'] %}
+            <li class="nav-item">
+                <a class="nav-link {% if status_filter == s %}active{% endif %}"
+                   href="{{ url_for('admin.reports', status=s) }}">
+                    {{ s.capitalize() }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Property</th>
+                            <th>Reported By</th>
+                            <th>Reason</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th class="text-end pe-3">Update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports.items %}
+                            <tr>
+                                <td class="ps-3">
+                                    {% if report.property %}
+                                        <a href="{{ url_for('main.property_detail', property_id=report.property_id) }}"
+                                           target="_blank" class="fw-semibold small text-decoration-none">
+                                            {{ report.property.title }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted small">Deleted Property</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small">{{ report.reporter.full_name }}</td>
+                                <td class="small text-muted" style="max-width:200px;">
+                                    <span title="{{ report.reason }}">{{ report.reason[:80] }}{% if report.reason|length > 80 %}…{% endif %}</span>
+                                </td>
+                                <td class="small text-muted">{{ report.created_at.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <span class="badge {% if report.status == 'pending' %}bg-warning text-dark{% elif report.status == 'reviewed' %}bg-info{% else %}bg-success{% endif %}">
+                                        {{ report.status.capitalize() }}
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <form method="POST" action="{{ url_for('admin.update_report', report_id=report.id) }}" class="d-inline-flex gap-1">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <select name="status" class="form-select form-select-sm" style="width:auto;">
+                                            {% for s in ['pending', 'reviewed', 'resolved'] %}
+                                                <option value="{{ s }}" {% if report.status == s %}selected{% endif %}>{{ s.capitalize() }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="6" class="text-center text-muted py-4">No reports found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

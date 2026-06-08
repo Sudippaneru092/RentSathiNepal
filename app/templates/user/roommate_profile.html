@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h4 class="fw-bold mb-0">Roommate Profile</h4>
+                    <p class="text-muted small mb-0">Help others find you as a suitable roommate</p>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('user.roommate_profile') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Preferred City</label>
+                                <input type="text" class="form-control" name="preferred_city"
+                                       value="{{ rp.preferred_city if rp else '' }}"
+                                       placeholder="e.g., Kathmandu">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Budget (NPR/month)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Rs.</span>
+                                    <input type="number" class="form-control" name="budget"
+                                           value="{{ rp.budget if rp and rp.budget else '' }}"
+                                           placeholder="10000" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Occupation</label>
+                                <input type="text" class="form-control" name="occupation"
+                                       value="{{ rp.occupation if rp else '' }}"
+                                       placeholder="e.g., Student, Engineer">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Gender Preference for Roommate</label>
+                                <select class="form-select" name="gender_preference">
+                                    <option value="">No Preference</option>
+                                    <option value="male" {% if rp and rp.gender_preference == 'male' %}selected{% endif %}>Male</option>
+                                    <option value="female" {% if rp and rp.gender_preference == 'female' %}selected{% endif %}>Female</option>
+                                    <option value="any" {% if rp and rp.gender_preference == 'any' %}selected{% endif %}>Any</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Smoking</label>
+                                <select class="form-select" name="smoking_preference">
+                                    <option value="">Not specified</option>
+                                    <option value="non-smoker" {% if rp and rp.smoking_preference == 'non-smoker' %}selected{% endif %}>Non-smoker</option>
+                                    <option value="smoker" {% if rp and rp.smoking_preference == 'smoker' %}selected{% endif %}>Smoker</option>
+                                    <option value="okay-with-smoking" {% if rp and rp.smoking_preference == 'okay-with-smoking' %}selected{% endif %}>Okay with smoking</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Drinking</label>
+                                <select class="form-select" name="drinking_preference">
+                                    <option value="">Not specified</option>
+                                    <option value="non-drinker" {% if rp and rp.drinking_preference == 'non-drinker' %}selected{% endif %}>Non-drinker</option>
+                                    <option value="drinker" {% if rp and rp.drinking_preference == 'drinker' %}selected{% endif %}>Drinker</option>
+                                    <option value="social-drinker" {% if rp and rp.drinking_preference == 'social-drinker' %}selected{% endif %}>Social drinker</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Lifestyle</label>
+                                <textarea class="form-control" name="lifestyle" rows="2"
+                                          placeholder="e.g., Early riser, vegetarian, keep-it-quiet type...">{{ rp.lifestyle if rp else '' }}</textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Bio / About Me</label>
+                                <textarea class="form-control" name="bio" rows="3"
+                                          placeholder="Tell potential roommates a bit about yourself...">{{ rp.bio if rp else '' }}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3 mt-4">
+                            <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-5">
+                                <i class="bi bi-check-circle me-2"></i>Save Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
