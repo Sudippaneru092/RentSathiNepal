@@ -349,6 +349,7 @@ def property_detail(property_id):
 
     owner = User.query.get(property.owner_id)
 
+    from datetime import datetime as _dt
     return render_template(
         'main/property_detail.html',
         title=property.title,
@@ -357,7 +358,8 @@ def property_detail(property_id):
         amenities=amenities,
         images=images,
         is_favorite=is_favorite,
-        owner=owner
+        owner=owner,
+        now=_dt.utcnow(),
     )
 
 
@@ -441,6 +443,76 @@ def contact_owner(property_id):
     db.session.commit()
     flash('Your message has been sent to the owner!', 'success')
     return redirect(url_for('main.property_detail', property_id=property_id))
+
+
+@main_bp.route('/property/<int:property_id>/book', methods=['POST'])
+@login_required
+def book_property(property_id):
+    """Submit a booking request for a property."""
+    from app.models import Booking
+    property = Property.query.get_or_404(property_id)
+
+    if current_user.role != 'user':
+        flash('Only tenants can make booking requests.', 'warning')
+        return redirect(url_for('main.property_detail', property_id=property_id))
+
+    if current_user.id == property.owner_id:
+        flash('You cannot book your own property.', 'warning')
+        return redirect(url_for('main.property_detail', property_id=property_id))
+
+    if property.availability_status != 'available':
+        flash('This property is currently not available for booking.', 'warning')
+        return redirect(url_for('main.property_detail', property_id=property_id))
+
+    # Check for existing pending/confirmed booking by this user
+    existing = Booking.query.filter_by(
+        property_id=property_id,
+        tenant_id=current_user.id,
+    ).filter(Booking.status.in_(['pending', 'confirmed'])).first()
+
+    if existing:
+        flash('You already have an active booking request for this property.', 'warning')
+        return redirect(url_for('main.property_detail', property_id=property_id))
+
+    # Parse move-in date
+    from datetime import date
+    move_in_str = request.form.get('move_in_date', '').strip()
+    message_text = request.form.get('message', '').strip()
+
+    if not move_in_str:
+        flash('Please select a move-in date.', 'danger')
+        return redirect(url_for('main.property_detail', property_id=property_id))
+
+    try:
+        move_in = date.fromisoformat(move_in_str)
+        if move_in < date.today():
+            flash('Move-in date cannot be in the past.', 'danger')
+            return redirect(url_for('main.property_detail', property_id=property_id))
+    except ValueError:
+        flash('Invalid date format.', 'danger')
+        return redirect(url_for('main.property_detail', property_id=property_id))
+
+    booking = Booking(
+        property_id=property_id,
+        tenant_id=current_user.id,
+        move_in_date=move_in,
+        message=message_text or f"Hi, I would like to book this property from {move_in_str}.",
+        status='pending',
+    )
+    db.session.add(booking)
+
+    # Also send a chat message so owner sees it in messages
+    chat = Chat(
+        sender_id=current_user.id,
+        receiver_id=property.owner_id,
+        property_id=property_id,
+        message=f"📅 Booking Request for {move_in_str}: {booking.message}"
+    )
+    db.session.add(chat)
+    db.session.commit()
+
+    flash('Booking request sent! The owner will respond within 24–48 hours.', 'success')
+    return redirect(url_for('user.my_bookings'))
 
 
 @main_bp.route('/property/<int:property_id>/report', methods=['POST'])

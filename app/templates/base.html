@@ -10,10 +10,13 @@
 </head>
 
 {% set is_auth_page = request.endpoint and request.endpoint.startswith('auth.') %}
+{% set is_admin_page = request.endpoint and request.endpoint.startswith('admin.') %}
+{% set is_owner_dash = request.endpoint and request.endpoint.startswith('owner.') %}
+{% set is_user_dash = request.endpoint and request.endpoint.startswith('user.') %}
 <body>
 
 <!-- ===== NAVBAR ===== -->
-{% if not is_auth_page %}
+{% if not is_auth_page and not is_admin_page and not is_owner_dash and not is_user_dash %}
 <nav class="navbar-rentsathi">
     <div class="container d-flex align-items-center gap-3">
         <!-- Brand -->
@@ -36,8 +39,8 @@
                <i class="bi bi-geo-alt-fill me-1" style="color:var(--red,#E8272A)"></i>Near Me
             </a>
             <a href="#" class="nav-link">Map View</a>
-            <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.register') }}"
-               class="nav-link">Roommates</a>
+            <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.login') }}"
+               class="nav-link {% if request.endpoint == 'user.roommate_profile' %}active{% endif %}">Roommates</a>
             <a href="#about" class="nav-link">About</a>
             <a href="#contact" class="nav-link">Contact</a>
 
@@ -109,7 +112,7 @@
             <a href="{{ url_for('main.listings') }}" class="nav-link py-2">Listings</a>
             <a href="{{ url_for('main.nearby') }}" class="nav-link py-2"><i class="bi bi-geo-alt-fill me-1" style="color:#E8272A"></i>Near Me</a>
             <a href="#" class="nav-link py-2">Map View</a>
-            <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.register') }}" class="nav-link py-2">Roommates</a>
+            <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.login') }}" class="nav-link py-2">Roommates</a>
             {% if current_user.is_authenticated %}
                 {% if current_user.role == 'user' %}
                     <a href="{{ url_for('user.dashboard') }}" class="nav-link py-2">Dashboard</a>
@@ -128,10 +131,10 @@
         </div>
     </div>
 </nav>
-{% endif %}{# end is_auth_page check #}
+{% endif %}{# end is_auth_page / is_admin_page / is_owner_dash / is_user_dash check #}
 
-<!-- Flash Messages (only on non-auth pages — auth pages handle their own) -->
-{% if not is_auth_page %}
+<!-- Flash Messages (only on non-auth, non-admin, non-owner-dash, non-user-dash pages — those handle their own) -->
+{% if not is_auth_page and not is_admin_page and not is_owner_dash and not is_user_dash %}
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         <div class="container mt-3">
@@ -150,7 +153,7 @@
 <main>{% block content %}{% endblock %}</main>
 
 <!-- Chat FAB -->
-{% if current_user.is_authenticated and not is_auth_page %}
+{% if current_user.is_authenticated and not is_auth_page and not is_admin_page and not is_owner_dash and not is_user_dash %}
     <a href="{{ url_for('user.messages') if current_user.role == 'user' else '#' }}" class="chat-fab" title="Messages">
         <i class="bi bi-chat-fill"></i>
     </a>

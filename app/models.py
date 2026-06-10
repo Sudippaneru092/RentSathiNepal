@@ -253,6 +253,26 @@ class Report(db.Model):
         return f'<Report property={self.property_id} status={self.status}>'
 
 
+class Booking(db.Model):
+    __tablename__ = 'bookings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    property_id  = db.Column(db.Integer, db.ForeignKey('properties.id'), nullable=False)
+    tenant_id    = db.Column(db.Integer, db.ForeignKey('users.id'),  nullable=False)
+    move_in_date = db.Column(db.Date, nullable=False)
+    message      = db.Column(db.Text, nullable=True)
+    status       = db.Column(db.String(20), default='pending')  # pending, confirmed, rejected, cancelled
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    property = db.relationship('Property', backref=db.backref('bookings', lazy='dynamic'))
+    tenant   = db.relationship('User',     backref=db.backref('bookings', lazy='dynamic'), foreign_keys=[tenant_id])
+
+    def __repr__(self):
+        return f'<Booking property={self.property_id} tenant={self.tenant_id} status={self.status}>'
+
+
 class AdminLog(db.Model):
     __tablename__ = 'admin_logs'
 

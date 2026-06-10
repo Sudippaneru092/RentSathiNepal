@@ -1,15 +1,17 @@
-{% extends "base.html" %}
+{% extends "user/user_base.html" %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i>
-        </a>
+{% block user_breadcrumb %}My Favorites{% endblock %}
+
+{% block user_content %}
+<div class="p-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h4 class="fw-bold mb-0">My Favorites</h4>
+            <h5 class="fw-bold mb-1">My Favorites</h5>
             <p class="text-muted small mb-0">{{ favorites.total }} saved propert{{ 'y' if favorites.total == 1 else 'ies' }}</p>
         </div>
+        <a href="{{ url_for('main.listings') }}" class="btn btn-sm btn-danger rounded-pill px-4">
+            <i class="bi bi-search me-1"></i>Browse More
+        </a>
     </div>
 
     {% if fav_properties %}
@@ -20,21 +22,25 @@
                         <div class="property-img-wrapper">
                             {% set img = prop.get_primary_image() %}
                             {% if img %}
-                                <img src="{{ url_for('static', filename=img) }}"
-                                     class="card-img-top property-img" alt="{{ prop.title }}">
+                                {% if img.startswith('http') %}
+                                    <img src="{{ img }}" class="card-img-top property-img" alt="{{ prop.title }}">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename=img) }}"
+                                         class="card-img-top property-img" alt="{{ prop.title }}">
+                                {% endif %}
                             {% else %}
                                 <div class="property-img-placeholder d-flex align-items-center justify-content-center bg-light">
                                     <i class="bi bi-house text-muted" style="font-size:3rem;"></i>
                                 </div>
                             {% endif %}
-                            <span class="badge bg-primary position-absolute top-0 start-0 m-2 text-capitalize">
+                            <span class="badge bg-danger position-absolute top-0 start-0 m-2 text-capitalize">
                                 {{ prop.property_type }}
                             </span>
                         </div>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h6 class="card-title fw-bold mb-0 text-truncate me-2">{{ prop.title }}</h6>
-                                <span class="text-primary fw-bold text-nowrap">
+                                <span class="text-danger fw-bold text-nowrap">
                                     Rs. {{ "{:,.0f}".format(prop.price) }}<small class="text-muted fw-normal">/mo</small>
                                 </span>
                             </div>
@@ -44,14 +50,15 @@
                             <div class="d-flex gap-3 text-muted small">
                                 <span><i class="bi bi-door-open me-1"></i>{{ prop.bedrooms }} bed</span>
                                 <span><i class="bi bi-droplet me-1"></i>{{ prop.bathrooms }} bath</span>
+                                {% if prop.furnished %}<span><i class="bi bi-lamp me-1"></i>Furnished</span>{% endif %}
                             </div>
                         </div>
                         <div class="card-footer bg-transparent border-top-0 pb-3 px-3 d-flex gap-2">
                             <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
-                               class="btn btn-outline-primary btn-sm flex-grow-1">View Details</a>
+                               class="btn btn-outline-primary btn-sm flex-grow-1 rounded-pill">View Details</a>
                             <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=prop.id) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove from favorites">
+                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Remove from favorites">
                                     <i class="bi bi-heart-fill"></i>
                                 </button>
                             </form>
@@ -87,10 +94,10 @@
         {% endif %}
     {% else %}
         <div class="text-center py-5">
-            <i class="bi bi-heart text-muted" style="font-size:4rem;"></i>
-            <h5 class="mt-3 text-muted">No favorites yet</h5>
+            <i class="bi bi-heart text-muted" style="font-size:5rem;opacity:0.3;"></i>
+            <h5 class="mt-3 fw-bold">No favorites yet</h5>
             <p class="text-muted">Browse properties and save the ones you like.</p>
-            <a href="{{ url_for('main.index') }}" class="btn btn-primary mt-2">Browse Rentals</a>
+            <a href="{{ url_for('main.listings') }}" class="btn btn-danger mt-2 rounded-pill px-5">Browse Rentals</a>
         </div>
     {% endif %}
 </div>

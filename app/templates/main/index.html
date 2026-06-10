@@ -348,7 +348,7 @@
                 <a href="{{ url_for('auth.register') }}" class="btn-roommate-white">
                     <i class="bi bi-people"></i> Find Roommates
                 </a>
-                <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.register') }}"
+                <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.login') }}"
                    class="btn-roommate-outline">
                     <i class="bi bi-person-plus"></i> Post Your Profile
                 </a>
@@ -500,7 +500,7 @@
             <!-- Contact -->
             <div class="col-lg-3 col-md-6">
                 <div class="footer-heading">Contact Us</div>
-                <div class="footer-contact-item"><i class="bi bi-geo-alt-fill text-danger"></i> Thamel, Kathmandu, Nepal</div>
+                <div class="footer-contact-item"><i class="bi bi-geo-alt-fill text-danger"></i> Dhangadhi, kailali, Nepal</div>
                 <div class="footer-contact-item"><i class="bi bi-telephone-fill text-danger"></i> +977-1-4567890</div>
                 <div class="footer-contact-item"><i class="bi bi-envelope-fill text-danger"></i> info@rentsathi.com.np</div>
                 <div class="footer-heading mt-3">Subscribe to our newsletter</div>
@@ -543,3 +543,4 @@ document.getElementById('heroNearMe')?.addEventListener('click', function(e) {
 });
 </script>
 {% endblock %}
+

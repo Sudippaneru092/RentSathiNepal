@@ -25,15 +25,19 @@ def save_file(file, subfolder='misc'):
 @user_bp.route('/dashboard')
 @login_required
 def dashboard():
-    # Get recent favorites
+    # Total counts
+    total_favorites = Favorite.query.filter_by(user_id=current_user.id).count()
+    total_messages = Chat.query.filter_by(receiver_id=current_user.id).count()
+    total_properties = Property.query.filter_by(status='active').count()
+
+    # Recent favorites (up to 4 for dashboard grid)
     recent_favorites = (
         Favorite.query
         .filter_by(user_id=current_user.id)
         .order_by(Favorite.created_at.desc())
-        .limit(6)
+        .limit(4)
         .all()
     )
-    # Load property info for each favorite
     fav_properties = [
         Property.query.get(f.property_id) for f in recent_favorites
         if Property.query.get(f.property_id)
@@ -48,11 +52,22 @@ def dashboard():
         .all()
     )
 
+    # Roommate profile
+    roommate_profile = RoommateProfile.query.filter_by(user_id=current_user.id).first()
+    has_roommate_profile = roommate_profile is not None
+
     return render_template(
         'user/dashboard.html',
         title='My Dashboard',
         fav_properties=fav_properties,
-        recent_messages=recent_messages
+        recent_messages=recent_messages,
+        total_favorites=total_favorites,
+        total_messages=total_messages,
+        total_properties=total_properties,
+        has_roommate_profile=has_roommate_profile,
+        roommate_profile=roommate_profile,
+        fav_count=total_favorites,
+        unread_count=total_messages,
     )
 
 
@@ -193,3 +208,29 @@ def messages():
         .all()
     )
     return render_template('user/messages.html', title='Messages', received=received, sent=sent)
+
+
+@user_bp.route('/bookings')
+@login_required
+def my_bookings():
+    from app.models import Booking
+    bookings = Booking.query.filter_by(tenant_id=current_user.id)\
+                            .order_by(Booking.created_at.desc()).all()
+    return render_template('user/bookings.html', title='My Bookings', bookings=bookings)
+
+
+@user_bp.route('/bookings/<int:booking_id>/cancel', methods=['POST'])
+@login_required
+def cancel_booking(booking_id):
+    from app.models import Booking
+    booking = Booking.query.get_or_404(booking_id)
+    if booking.tenant_id != current_user.id:
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('user.my_bookings'))
+    if booking.status not in ('pending',):
+        flash('Only pending bookings can be cancelled.', 'warning')
+        return redirect(url_for('user.my_bookings'))
+    booking.status = 'cancelled'
+    db.session.commit()
+    flash('Booking request cancelled.', 'info')
+    return redirect(url_for('user.my_bookings'))

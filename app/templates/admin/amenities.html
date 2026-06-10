@@ -1,66 +1,63 @@
-{% extends "base.html" %}
+{% extends "admin/admin_base.html" %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <h4 class="fw-bold mb-0">Manage Amenities</h4>
-    </div>
+{% block admin_breadcrumb %}Manage Amenities{% endblock %}
 
-    <div class="row g-4">
-        <!-- Add Form -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-bottom py-3">
-                    <h6 class="fw-semibold mb-0">Add New Amenity</h6>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('admin.amenities') }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Amenity Name</label>
-                            <input type="text" class="form-control" name="amenity_name"
-                                   placeholder="e.g., WiFi, Water Supply, Generator" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-plus-circle me-2"></i>Add Amenity
-                        </button>
-                    </form>
-                </div>
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <h4 class="fw-bold mb-0">Manage Amenities</h4>
+</div>
+
+<div class="row g-4">
+    <!-- Add Form -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3">
+                <h6 class="fw-semibold mb-0">Add New Amenity</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.amenities') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Amenity Name</label>
+                        <input type="text" class="form-control" name="amenity_name"
+                               placeholder="e.g., WiFi, Water Supply, Generator" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle me-2"></i>Add Amenity
+                    </button>
+                </form>
             </div>
         </div>
+    </div>
 
-        <!-- Amenity List -->
-        <div class="col-md-8">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between">
-                    <h6 class="fw-semibold mb-0">All Amenities</h6>
-                    <span class="badge bg-secondary">{{ amenities|length }}</span>
-                </div>
-                <div class="card-body">
-                    {% if amenities %}
-                        <div class="row g-2">
-                            {% for amenity in amenities %}
-                                <div class="col-sm-6 col-lg-4">
-                                    <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded">
-                                        <span class="small fw-semibold">{{ amenity.amenity_name }}</span>
-                                        <form method="POST" action="{{ url_for('admin.delete_amenity', amenity_id=amenity.id) }}" class="d-inline">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2"
-                                                    onclick="return confirm('Delete {{ amenity.amenity_name }}?')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
+    <!-- Amenity List -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between">
+                <h6 class="fw-semibold mb-0">All Amenities</h6>
+                <span class="badge bg-secondary">{{ amenities|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if amenities %}
+                    <div class="row g-2">
+                        {% for amenity in amenities %}
+                            <div class="col-sm-6 col-lg-4">
+                                <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded">
+                                    <span class="small fw-semibold">{{ amenity.amenity_name }}</span>
+                                    <form method="POST" action="{{ url_for('admin.delete_amenity', amenity_id=amenity.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2"
+                                                onclick="return confirm('Delete {{ amenity.amenity_name }}?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted text-center mb-0">No amenities added yet.</p>
-                    {% endif %}
-                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center mb-0">No amenities added yet.</p>
+                {% endif %}
             </div>
         </div>
     </div>

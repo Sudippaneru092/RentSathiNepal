@@ -1,124 +1,121 @@
-{% extends "base.html" %}
+{% extends "admin/admin_base.html" %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <h4 class="fw-bold mb-0">Manage Properties</h4>
-    </div>
+{% block admin_breadcrumb %}Manage Properties{% endblock %}
 
-    <!-- Filters -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body py-2">
-            <form method="GET" class="d-flex flex-wrap gap-3 align-items-center">
-                <div>
-                    <select name="verification" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All Verifications</option>
-                        <option value="pending" {% if verification_filter == 'pending' %}selected{% endif %}>Pending</option>
-                        <option value="verified" {% if verification_filter == 'verified' %}selected{% endif %}>Verified</option>
-                        <option value="rejected" {% if verification_filter == 'rejected' %}selected{% endif %}>Rejected</option>
-                    </select>
-                </div>
-                <div>
-                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All Status</option>
-                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
-                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
-                    </select>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-3">ID</th>
-                            <th>Title</th>
-                            <th>Owner</th>
-                            <th>City</th>
-                            <th>Price</th>
-                            <th>Status</th>
-                            <th>Verification</th>
-                            <th class="text-end pe-3">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for prop in properties.items %}
-                            <tr>
-                                <td class="ps-3 text-muted small">{{ prop.id }}</td>
-                                <td>
-                                    <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
-                                       class="text-decoration-none fw-semibold small" target="_blank">
-                                        {{ prop.title }}
-                                    </a>
-                                    <small class="text-muted d-block text-capitalize">{{ prop.property_type }}</small>
-                                </td>
-                                <td class="small">{{ prop.owner.full_name }}</td>
-                                <td class="small">{{ prop.city }}</td>
-                                <td class="small fw-semibold text-primary">Rs. {{ "{:,.0f}".format(prop.price) }}</td>
-                                <td>
-                                    <span class="badge {% if prop.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {{ prop.status.capitalize() }}
-                                    </span>
-                                </td>
-                                <td>
-                                    {% if prop.verification_status == 'verified' %}
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Verified</span>
-                                    {% elif prop.verification_status == 'pending' %}
-                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
-                                    {% else %}
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rejected</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end pe-3">
-                                    <div class="d-flex gap-1 justify-content-end">
-                                        {% if prop.verification_status == 'pending' %}
-                                            <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <input type="hidden" name="action" value="verify">
-                                                <button type="submit" class="btn btn-success btn-sm" title="Verify">
-                                                    <i class="bi bi-check-circle"></i>
-                                                </button>
-                                            </form>
-                                            <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <input type="hidden" name="action" value="reject">
-                                                <button type="submit" class="btn btn-danger btn-sm" title="Reject">
-                                                    <i class="bi bi-x-circle"></i>
-                                                </button>
-                                            </form>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr><td colspan="8" class="text-center text-muted py-4">No properties found</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pagination -->
-    {% if properties.pages > 1 %}
-        <nav class="mt-4 d-flex justify-content-center">
-            <ul class="pagination pagination-sm">
-                {% for page_num in properties.iter_pages() %}
-                    {% if page_num %}
-                        <li class="page-item {% if page_num == properties.page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('admin.properties', page=page_num, verification=verification_filter, status=status_filter) }}">{{ page_num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-            </ul>
-        </nav>
-    {% endif %}
+{% block admin_content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <h4 class="fw-bold mb-0">Manage Properties</h4>
 </div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2">
+        <form method="GET" class="d-flex flex-wrap gap-3 align-items-center">
+            <div>
+                <select name="verification" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Verifications</option>
+                    <option value="pending" {% if verification_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="verified" {% if verification_filter == 'verified' %}selected{% endif %}>Verified</option>
+                    <option value="rejected" {% if verification_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            <div>
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Status</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">ID</th>
+                        <th>Title</th>
+                        <th>Owner</th>
+                        <th>City</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Verification</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prop in properties.items %}
+                        <tr>
+                            <td class="ps-3 text-muted small">{{ prop.id }}</td>
+                            <td>
+                                <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
+                                   class="text-decoration-none fw-semibold small" target="_blank">
+                                    {{ prop.title }}
+                                </a>
+                                <small class="text-muted d-block text-capitalize">{{ prop.property_type }}</small>
+                            </td>
+                            <td class="small">{{ prop.owner.full_name }}</td>
+                            <td class="small">{{ prop.city }}</td>
+                            <td class="small fw-semibold text-primary">Rs. {{ "{:,.0f}".format(prop.price) }}</td>
+                            <td>
+                                <span class="badge {% if prop.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ prop.status.capitalize() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if prop.verification_status == 'verified' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Verified</span>
+                                {% elif prop.verification_status == 'pending' %}
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    {% if prop.verification_status == 'pending' %}
+                                        <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="action" value="verify">
+                                            <button type="submit" class="btn btn-success btn-sm" title="Verify">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="action" value="reject">
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Reject">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">No properties found</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if properties.pages > 1 %}
+    <nav class="mt-4 d-flex justify-content-center">
+        <ul class="pagination pagination-sm">
+            {% for page_num in properties.iter_pages() %}
+                {% if page_num %}
+                    <li class="page-item {% if page_num == properties.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.properties', page=page_num, verification=verification_filter, status=status_filter) }}">{{ page_num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+{% endif %}
 {% endblock %}

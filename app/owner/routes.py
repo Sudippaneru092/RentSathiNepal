@@ -59,10 +59,67 @@ def save_file(file, subfolder='misc'):
 @login_required
 @owner_required
 def dashboard():
+    from app.models import Chat, Review, Favorite
     properties = Property.query.filter_by(owner_id=current_user.id).order_by(Property.created_at.desc()).all()
     owner_profile = OwnerProfile.query.filter_by(user_id=current_user.id).first()
-    return render_template('owner/dashboard.html', title='Owner Dashboard',
-                           properties=properties, owner_profile=owner_profile)
+
+    prop_ids = [p.id for p in properties]
+
+    # Stats
+    total_props       = len(properties)
+    available_props   = sum(1 for p in properties if p.availability_status == 'available')
+    occupied_props    = sum(1 for p in properties if p.availability_status == 'occupied')
+    pending_props     = sum(1 for p in properties if p.verification_status == 'pending')
+    verified_props    = sum(1 for p in properties if p.verification_status == 'verified')
+
+    # Inquiries (messages received about owner's properties)
+    total_inquiries = Chat.query.filter(
+        Chat.receiver_id == current_user.id
+    ).count() if prop_ids else 0
+
+    unread_inquiries = Chat.query.filter(
+        Chat.receiver_id == current_user.id
+    ).count()
+
+    # Recent inquiries
+    recent_inquiries = Chat.query.filter(
+        Chat.receiver_id == current_user.id
+    ).order_by(Chat.sent_at.desc()).limit(5).all()
+
+    # Recent reviews across all properties
+    recent_reviews = []
+    if prop_ids:
+        recent_reviews = Review.query.filter(
+            Review.property_id.in_(prop_ids)
+        ).order_by(Review.created_at.desc()).limit(5).all()
+
+    # Total favorites across all properties
+    total_favorites = Favorite.query.filter(
+        Favorite.property_id.in_(prop_ids)
+    ).count() if prop_ids else 0
+
+    # Pending booking requests
+    from app.models import Booking
+    pending_bookings = Booking.query.join(Property).filter(
+        Property.owner_id == current_user.id,
+        Booking.status == 'pending'
+    ).count() if prop_ids else 0
+
+    return render_template('owner/dashboard.html',
+                           title='Owner Dashboard',
+                           properties=properties,
+                           owner_profile=owner_profile,
+                           total_props=total_props,
+                           available_props=available_props,
+                           occupied_props=occupied_props,
+                           pending_props=pending_props,
+                           verified_props=verified_props,
+                           total_inquiries=total_inquiries,
+                           unread_inquiries=unread_inquiries,
+                           recent_inquiries=recent_inquiries,
+                           recent_reviews=recent_reviews,
+                           total_favorites=total_favorites,
+                           pending_bookings=pending_bookings)
 
 
 @owner_bp.route('/property/add', methods=['GET', 'POST'])
@@ -315,6 +372,67 @@ def delete_property_image(property_id, image_id):
     db.session.commit()
     flash('Image removed.', 'info')
     return redirect(url_for('owner.edit_property', property_id=property_id))
+
+
+@owner_bp.route('/bookings')
+@login_required
+@owner_required
+def bookings():
+    from app.models import Booking
+    # All bookings for this owner's properties
+    bookings = db.session.query(Booking)\
+        .join(Property, Booking.property_id == Property.id)\
+        .filter(Property.owner_id == current_user.id)\
+        .order_by(Booking.created_at.desc()).all()
+    pending_count = sum(1 for b in bookings if b.status == 'pending')
+    return render_template('owner/bookings.html', title='Booking Requests',
+                           bookings=bookings, pending_count=pending_count)
+
+
+@owner_bp.route('/bookings/<int:booking_id>/respond', methods=['POST'])
+@login_required
+@owner_required
+def respond_booking(booking_id):
+    from app.models import Booking
+    booking = Booking.query.get_or_404(booking_id)
+
+    # Verify this booking is for the owner's property
+    if booking.property.owner_id != current_user.id:
+        abort(403)
+
+    action = request.form.get('action')
+    if action == 'confirm':
+        booking.status = 'confirmed'
+        # Mark property as occupied
+        booking.property.availability_status = 'occupied'
+        db.session.commit()
+        # Notify tenant via chat
+        from app.models import Chat
+        chat = Chat(
+            sender_id=current_user.id,
+            receiver_id=booking.tenant_id,
+            property_id=booking.property_id,
+            message=f"✅ Your booking request for '{booking.property.title}' on {booking.move_in_date.strftime('%B %d, %Y')} has been CONFIRMED! Please contact me to arrange the details."
+        )
+        db.session.add(chat)
+        db.session.commit()
+        flash('Booking confirmed! The property is now marked as occupied.', 'success')
+
+    elif action == 'reject':
+        booking.status = 'rejected'
+        db.session.commit()
+        from app.models import Chat
+        chat = Chat(
+            sender_id=current_user.id,
+            receiver_id=booking.tenant_id,
+            property_id=booking.property_id,
+            message=f"❌ Unfortunately, your booking request for '{booking.property.title}' has been declined. Please browse other available properties."
+        )
+        db.session.add(chat)
+        db.session.commit()
+        flash('Booking request declined.', 'info')
+
+    return redirect(url_for('owner.bookings'))
 
 
 @owner_bp.route('/profile', methods=['GET', 'POST'])

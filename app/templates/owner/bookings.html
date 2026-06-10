@@ -1,0 +1,161 @@
+{% extends "owner/owner_base.html" %}
+{% block owner_breadcrumb %}Booking Requests{% endblock %}
+
+{% block owner_content %}
+<div class="p-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h5 class="fw-bold mb-1">Booking Requests</h5>
+      <p class="text-muted small mb-0">
+        {{ bookings|length }} total
+        {% if pending_count > 0 %}
+          &nbsp;·&nbsp; <span class="text-warning fw-semibold">{{ pending_count }} pending</span>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <!-- Status filter tabs -->
+  <div class="d-flex gap-2 mb-4 flex-wrap" id="bkTabs">
+    {% for status, label in [('all','All'),('pending','Pending'),('confirmed','Confirmed'),('rejected','Declined'),('cancelled','Cancelled')] %}
+      <button class="btn btn-sm rounded-pill {% if loop.first %}btn-dark{% else %}btn-outline-secondary{% endif %} bk-tab"
+              data-filter="{{ status }}">
+        {{ label }}
+        {% if status == 'pending' and pending_count > 0 %}
+          <span class="badge bg-warning text-dark ms-1">{{ pending_count }}</span>
+        {% endif %}
+      </button>
+    {% endfor %}
+  </div>
+
+  {% if bookings %}
+    <div class="row g-3" id="bkList">
+      {% for booking in bookings %}
+        <div class="col-12 bk-item" data-status="{{ booking.status }}">
+          <div class="bk-card">
+
+            <!-- Thumbnail -->
+            <div class="bk-img-wrap">
+              {% set img = booking.property.get_primary_image() %}
+              {% if img %}
+                {% if img.startswith('http') %}
+                  <img src="{{ img }}" alt="">
+                {% else %}
+                  <img src="{{ url_for('static', filename=img) }}" alt="">
+                {% endif %}
+              {% else %}
+                <div class="bk-img-placeholder"><i class="bi bi-house"></i></div>
+              {% endif %}
+              <span class="bk-prop-type">{{ booking.property.property_type.capitalize() }}</span>
+            </div>
+
+            <!-- Info -->
+            <div class="bk-info">
+              <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                <div>
+                  <h6 class="bk-prop-title">
+                    <a href="{{ url_for('main.property_detail', property_id=booking.property_id) }}"
+                       class="text-decoration-none text-dark">{{ booking.property.title }}</a>
+                  </h6>
+                  <div class="bk-location">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                    {{ booking.property.city }}
+                  </div>
+                </div>
+                <span class="bk-status bk-status-{{ booking.status }}">
+                  {% if booking.status == 'pending' %}<i class="bi bi-clock-fill me-1"></i>Pending
+                  {% elif booking.status == 'confirmed' %}<i class="bi bi-check-circle-fill me-1"></i>Confirmed
+                  {% elif booking.status == 'rejected' %}<i class="bi bi-x-circle-fill me-1"></i>Declined
+                  {% else %}<i class="bi bi-slash-circle me-1"></i>Cancelled{% endif %}
+                </span>
+              </div>
+
+              <!-- Tenant info + booking details -->
+              <div class="bk-details">
+                <div class="bk-detail">
+                  <i class="bi bi-person-fill text-primary me-1"></i>
+                  <span><strong>Tenant:</strong> {{ booking.tenant.full_name }}</span>
+                </div>
+                {% if booking.tenant.phone %}
+                <div class="bk-detail">
+                  <i class="bi bi-telephone-fill text-success me-1"></i>
+                  <span>{{ booking.tenant.phone }}</span>
+                </div>
+                {% endif %}
+                <div class="bk-detail">
+                  <i class="bi bi-calendar-event text-warning me-1"></i>
+                  <span><strong>Move-in:</strong> {{ booking.move_in_date.strftime('%B %d, %Y') }}</span>
+                </div>
+                <div class="bk-detail">
+                  <i class="bi bi-clock-history me-1"></i>
+                  <span><strong>Requested:</strong> {{ booking.created_at.strftime('%b %d, %Y') }}</span>
+                </div>
+              </div>
+
+              {% if booking.message %}
+                <div class="bk-message">
+                  <i class="bi bi-chat-quote me-1 text-muted"></i>
+                  <em>"{{ booking.message[:150] }}{% if booking.message|length > 150 %}...{% endif %}"</em>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="bk-actions">
+              {% if booking.status == 'pending' %}
+                <form method="POST" action="{{ url_for('owner.respond_booking', booking_id=booking.id) }}"
+                      class="d-flex gap-2">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" name="action" value="confirm"
+                          class="btn btn-sm btn-success rounded-pill px-3"
+                          onclick="return confirm('Confirm this booking? The property will be marked as occupied.')">
+                    <i class="bi bi-check-lg me-1"></i>Confirm
+                  </button>
+                  <button type="submit" name="action" value="reject"
+                          class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                          onclick="return confirm('Decline this booking request?')">
+                    <i class="bi bi-x-lg me-1"></i>Decline
+                  </button>
+                </form>
+              {% elif booking.status == 'confirmed' %}
+                <div class="text-success small fw-semibold">
+                  <i class="bi bi-patch-check-fill me-1"></i>Booking confirmed
+                </div>
+              {% endif %}
+              <a href="{{ url_for('main.property_detail', property_id=booking.property_id) }}"
+                 class="btn btn-sm btn-outline-secondary rounded-pill">
+                <i class="bi bi-eye me-1"></i>View Property
+              </a>
+            </div>
+
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-calendar-x text-muted" style="font-size:4rem;"></i>
+      <h5 class="mt-3 text-muted">No booking requests yet</h5>
+      <p class="text-muted small">When tenants request to book your properties, they'll appear here.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.bk-tab').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.bk-tab').forEach(b => {
+      b.className = 'btn btn-sm rounded-pill btn-outline-secondary bk-tab';
+    });
+    this.className = 'btn btn-sm rounded-pill btn-dark bk-tab';
+    const filter = this.dataset.filter;
+    document.querySelectorAll('.bk-item').forEach(item => {
+      item.style.display = (filter === 'all' || item.dataset.status === filter) ? '' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}

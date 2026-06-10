@@ -1,215 +1,384 @@
-{% extends "base.html" %}
+{% extends "owner/owner_base.html" %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="fw-bold mb-1">Owner Dashboard</h4>
-            <p class="text-muted mb-0">Manage your rental properties</p>
-        </div>
-        <a href="{{ url_for('owner.add_property') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>Add New Property
+{% block owner_breadcrumb %}Dashboard{% endblock %}
+
+{% block owner_content %}
+
+    <!-- ══ TOP BAR ══ -->
+    <div class="od-topbar">
+      <div>
+        <h1 class="od-page-title">Owner Dashboard</h1>
+        <p class="od-page-sub">
+          Welcome back, <strong>{{ current_user.full_name.split()[0] }}</strong> 👋
+          &nbsp;·&nbsp;
+          {% if owner_profile and owner_profile.verification_status == 'verified' %}
+            <span class="od-verified-badge"><i class="bi bi-patch-check-fill me-1"></i>Verified Owner</span>
+          {% elif owner_profile and owner_profile.verification_status == 'pending' %}
+            <span class="od-pending-badge"><i class="bi bi-clock me-1"></i>Verification Pending</span>
+          {% else %}
+            <span class="od-rejected-badge"><i class="bi bi-x-circle me-1"></i>Verification Rejected</span>
+          {% endif %}
+        </p>
+      </div>
+      <div class="od-topbar-actions">
+        <a href="{{ url_for('owner.owner_profile') }}" class="od-btn-secondary">
+          <i class="bi bi-person-gear"></i> My Profile
         </a>
+        <a href="{{ url_for('owner.add_property') }}" class="od-btn-primary">
+          <i class="bi bi-plus-lg"></i> Add Property
+        </a>
+      </div>
     </div>
 
-    <!-- Owner Verification Alert -->
+    <!-- ══ VERIFICATION ALERT ══ -->
     {% if owner_profile and owner_profile.verification_status == 'pending' %}
-        <div class="alert alert-warning d-flex align-items-start gap-3 mb-4">
-            <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0 mt-1"></i>
-            <div>
-                <strong>Profile Verification Pending</strong>
-                <p class="mb-0 small">Your owner profile is under review. Properties you add will be listed after verification.</p>
-                <a href="{{ url_for('owner.owner_profile') }}" class="btn btn-sm btn-outline-warning mt-2">
-                    Complete Profile
-                </a>
-            </div>
-        </div>
+    <div class="od-alert od-alert-warning mb-4">
+      <i class="bi bi-exclamation-triangle-fill od-alert-icon"></i>
+      <div>
+        <strong>Profile verification pending</strong> — Your properties will go live once our team reviews your account (usually 24–48 hours).
+        <a href="{{ url_for('owner.owner_profile') }}" class="od-alert-link ms-2">Complete your profile →</a>
+      </div>
+    </div>
     {% elif owner_profile and owner_profile.verification_status == 'rejected' %}
-        <div class="alert alert-danger d-flex align-items-start gap-3 mb-4">
-            <i class="bi bi-x-circle-fill fs-4 flex-shrink-0 mt-1"></i>
-            <div>
-                <strong>Profile Rejected</strong>
-                <p class="mb-0 small">Your owner profile was rejected. Please update your documents and resubmit.</p>
-                <a href="{{ url_for('owner.owner_profile') }}" class="btn btn-sm btn-outline-danger mt-2">Update Profile</a>
-            </div>
-        </div>
+    <div class="od-alert od-alert-danger mb-4">
+      <i class="bi bi-x-circle-fill od-alert-icon"></i>
+      <div>
+        <strong>Verification rejected</strong> — Please update your documents and resubmit.
+        <a href="{{ url_for('owner.owner_profile') }}" class="od-alert-link ms-2">Update now →</a>
+      </div>
+    </div>
     {% endif %}
 
-    <!-- Stats Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm text-center p-3">
-                <div class="h3 fw-bold text-primary mb-0">{{ properties|length }}</div>
-                <small class="text-muted">Total Properties</small>
-            </div>
+    <!-- ══ STAT CARDS ══ -->
+    <div class="od-stats-grid">
+
+      <div class="od-stat-card">
+        <div class="od-stat-icon" style="background:#eff6ff;color:#3b82f6;">
+          <i class="bi bi-houses-fill"></i>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm text-center p-3">
-                <div class="h3 fw-bold text-success mb-0">
-                    {{ properties|selectattr('availability_status', 'eq', 'available')|list|length }}
-                </div>
-                <small class="text-muted">Available</small>
-            </div>
+        <div class="od-stat-body">
+          <div class="od-stat-num">{{ total_props }}</div>
+          <div class="od-stat-label">Total Properties</div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm text-center p-3">
-                <div class="h3 fw-bold text-warning mb-0">
-                    {{ properties|selectattr('verification_status', 'eq', 'pending')|list|length }}
-                </div>
-                <small class="text-muted">Pending Review</small>
-            </div>
+        <a href="#propertiesSection" class="od-stat-link">View all →</a>
+      </div>
+
+      <div class="od-stat-card">
+        <div class="od-stat-icon" style="background:#f0fdf4;color:#22c55e;">
+          <i class="bi bi-check-circle-fill"></i>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-0 shadow-sm text-center p-3">
-                <div class="h3 fw-bold text-secondary mb-0">
-                    {{ properties|selectattr('availability_status', 'eq', 'occupied')|list|length }}
-                </div>
-                <small class="text-muted">Occupied</small>
-            </div>
+        <div class="od-stat-body">
+          <div class="od-stat-num">{{ verified_props }}</div>
+          <div class="od-stat-label">Verified</div>
         </div>
+      </div>
+
+      <div class="od-stat-card">
+        <div class="od-stat-icon" style="background:#fff7ed;color:#f97316;">
+          <i class="bi bi-clock-fill"></i>
+        </div>
+        <div class="od-stat-body">
+          <div class="od-stat-num">{{ pending_props }}</div>
+          <div class="od-stat-label">Pending Review</div>
+        </div>
+      </div>
+
+      <div class="od-stat-card">
+        <div class="od-stat-icon" style="background:#fdf2f8;color:#ec4899;">
+          <i class="bi bi-chat-dots-fill"></i>
+        </div>
+        <div class="od-stat-body">
+          <div class="od-stat-num">{{ total_inquiries }}</div>
+          <div class="od-stat-label">Total Inquiries</div>
+        </div>
+        <a href="#inquiriesSection" class="od-stat-link">View →</a>
+      </div>
+
+      <div class="od-stat-card">
+        <div class="od-stat-icon" style="background:#fff5f5;color:#ef4444;">
+          <i class="bi bi-heart-fill"></i>
+        </div>
+        <div class="od-stat-body">
+          <div class="od-stat-num">{{ total_favorites }}</div>
+          <div class="od-stat-label">Saved by Tenants</div>
+        </div>
+      </div>
+
+      <div class="od-stat-card">
+        <div class="od-stat-icon" style="background:#f5f3ff;color:#8b5cf6;">
+          <i class="bi bi-house-door-fill"></i>
+        </div>
+        <div class="od-stat-body">
+          <div class="od-stat-num">{{ available_props }}</div>
+          <div class="od-stat-label">Available Now</div>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Properties Table -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom py-3">
-            <h6 class="fw-semibold mb-0">My Properties</h6>
-        </div>
-        <div class="card-body p-0">
-            {% if properties %}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-3">Property</th>
-                                <th>Price</th>
-                                <th>Location</th>
-                                <th>Status</th>
-                                <th>Verification</th>
-                                <th class="text-end pe-3">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for prop in properties %}
-                                <tr>
-                                    <td class="ps-3">
-                                        <div class="d-flex align-items-center gap-3">
-                                            {% set img = prop.get_primary_image() %}
-                                            {% if img %}
-                                                <img src="{{ url_for('static', filename=img) }}"
-                                                     class="rounded" width="60" height="50"
-                                                     style="object-fit:cover;" alt="">
-                                            {% else %}
-                                                <div class="bg-light rounded d-flex align-items-center justify-content-center flex-shrink-0"
-                                                     style="width:60px;height:50px;">
-                                                    <i class="bi bi-house text-muted"></i>
-                                                </div>
-                                            {% endif %}
-                                            <div>
-                                                <div class="fw-semibold small">{{ prop.title }}</div>
-                                                <span class="badge bg-secondary-subtle text-secondary text-capitalize small">
-                                                    {{ prop.property_type }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="fw-semibold text-primary">
-                                            Rs. {{ "{:,.0f}".format(prop.price) }}
-                                        </span>
-                                        <small class="text-muted d-block">/month</small>
-                                    </td>
-                                    <td>
-                                        <span class="small">{{ prop.city }}</span>
-                                        {% if prop.district %}
-                                            <small class="text-muted d-block">{{ prop.district }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if prop.availability_status == 'available' %}bg-success{% else %}bg-secondary{% endif %}">
-                                            {{ prop.availability_status.capitalize() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if prop.verification_status == 'verified' %}
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                                <i class="bi bi-check-circle me-1"></i>Verified
-                                            </span>
-                                        {% elif prop.verification_status == 'pending' %}
-                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-                                                <i class="bi bi-clock me-1"></i>Pending
-                                            </span>
-                                        {% else %}
-                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                                <i class="bi bi-x-circle me-1"></i>Rejected
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-end pe-3">
-                                        <div class="d-flex gap-2 justify-content-end">
-                                            <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
-                                               class="btn btn-sm btn-outline-secondary" title="View">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            <a href="{{ url_for('owner.edit_property', property_id=prop.id) }}"
-                                               class="btn btn-sm btn-outline-primary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    onclick="confirmDelete({{ prop.id }}, '{{ prop.title|replace("'", "\\'") }}')"
-                                                    title="Delete">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+    <!-- ══ MAIN CONTENT: 2-col layout ══ -->
+    <div class="od-main-grid">
+
+      <!-- LEFT: Properties list -->
+      <div>
+        <div class="od-card" id="propertiesSection">
+          <div class="od-card-head">
+            <h2 class="od-card-title"><i class="bi bi-buildings me-2 text-primary"></i>My Properties</h2>
+            <a href="{{ url_for('owner.add_property') }}" class="od-btn-sm-primary">
+              <i class="bi bi-plus-lg me-1"></i>Add New
+            </a>
+          </div>
+
+          <!-- Filter tabs -->
+          <div class="od-prop-tabs" id="propTabs">
+            <button class="od-ptab active" data-filter="all">All <span class="od-ptab-count">{{ total_props }}</span></button>
+            <button class="od-ptab" data-filter="verified">Verified <span class="od-ptab-count">{{ verified_props }}</span></button>
+            <button class="od-ptab" data-filter="pending">Pending <span class="od-ptab-count">{{ pending_props }}</span></button>
+            <button class="od-ptab" data-filter="available">Available <span class="od-ptab-count">{{ available_props }}</span></button>
+            <button class="od-ptab" data-filter="occupied">Occupied <span class="od-ptab-count">{{ occupied_props }}</span></button>
+          </div>
+
+          {% if properties %}
+          <div class="od-prop-list" id="propList">
+            {% for prop in properties %}
+            <div class="od-prop-row"
+                 data-vstatus="{{ prop.verification_status }}"
+                 data-astatus="{{ prop.availability_status }}">
+
+              <!-- Thumbnail -->
+              <div class="od-prop-thumb">
+                {% set img = prop.get_primary_image() %}
+                {% if img %}
+                  <img src="{{ prop_img_url(img) }}" alt="{{ prop.title }}">
+                {% else %}
+                  <div class="od-prop-thumb-placeholder"><i class="bi bi-house"></i></div>
+                {% endif %}
+                <span class="od-prop-type-badge">{{ prop.property_type.capitalize() }}</span>
+              </div>
+
+              <!-- Info -->
+              <div class="od-prop-info">
+                <div class="od-prop-title">{{ prop.title }}</div>
+                <div class="od-prop-location">
+                  <i class="bi bi-geo-alt-fill text-danger"></i>
+                  {{ prop.area or '' }}{% if prop.area and prop.city %}, {% endif %}{{ prop.city }}
                 </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <i class="bi bi-house-add text-muted" style="font-size: 4rem;"></i>
-                    <h6 class="mt-3 text-muted">No properties yet</h6>
-                    <p class="text-muted small">Add your first property to start getting inquiries.</p>
-                    <a href="{{ url_for('owner.add_property') }}" class="btn btn-primary mt-2">
-                        <i class="bi bi-plus-circle me-2"></i>Add Property
-                    </a>
+                <div class="od-prop-meta-row">
+                  <span class="od-prop-price">Rs. {{ "{:,.0f}".format(prop.price) }}<small>/mo</small></span>
+                  <span class="od-prop-rooms">
+                    <i class="bi bi-door-open"></i> {{ prop.bedrooms }}bd
+                    <i class="bi bi-droplet ms-2"></i> {{ prop.bathrooms }}ba
+                  </span>
                 </div>
-            {% endif %}
+              </div>
+
+              <!-- Badges -->
+              <div class="od-prop-badges">
+                {% if prop.verification_status == 'verified' %}
+                  <span class="od-badge od-badge-green"><i class="bi bi-patch-check-fill me-1"></i>Verified</span>
+                {% elif prop.verification_status == 'pending' %}
+                  <span class="od-badge od-badge-yellow"><i class="bi bi-clock me-1"></i>Pending</span>
+                {% else %}
+                  <span class="od-badge od-badge-red"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                {% endif %}
+
+                {% if prop.availability_status == 'available' %}
+                  <span class="od-badge od-badge-blue">Available</span>
+                {% else %}
+                  <span class="od-badge od-badge-gray">Occupied</span>
+                {% endif %}
+              </div>
+
+              <!-- Actions -->
+              <div class="od-prop-actions">
+                <a href="{{ url_for('main.property_detail', property_id=prop.id) }}"
+                   class="od-action-btn" title="View listing">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{{ url_for('owner.edit_property', property_id=prop.id) }}"
+                   class="od-action-btn od-action-blue" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <button class="od-action-btn od-action-red"
+                        onclick="confirmDelete({{ prop.id }}, '{{ prop.title|replace("'","\\'")|e }}')"
+                        title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+
+            </div>
+            {% endfor %}
+          </div>
+
+          {% else %}
+          <div class="od-empty">
+            <i class="bi bi-house-add"></i>
+            <h3>No properties yet</h3>
+            <p>Add your first property to start receiving tenant inquiries.</p>
+            <a href="{{ url_for('owner.add_property') }}" class="od-btn-primary">
+              <i class="bi bi-plus-lg me-1"></i>Add Your First Property
+            </a>
+          </div>
+          {% endif %}
+
         </div>
+      </div>
+
+      <!-- RIGHT: Inquiries + Reviews -->
+      <div class="od-right-col">
+
+        <!-- Recent Inquiries -->
+        <div class="od-card" id="inquiriesSection">
+          <div class="od-card-head">
+            <h2 class="od-card-title"><i class="bi bi-chat-dots me-2 text-pink"></i>Recent Inquiries</h2>
+            <span class="od-badge od-badge-red">{{ total_inquiries }} total</span>
+          </div>
+
+          {% if recent_inquiries %}
+            <div class="od-inquiry-list">
+              {% for msg in recent_inquiries %}
+              <div class="od-inquiry-item">
+                <div class="od-inq-avatar">{{ msg.sender.full_name[0].upper() }}</div>
+                <div class="od-inq-body">
+                  <div class="od-inq-name">{{ msg.sender.full_name }}</div>
+                  <div class="od-inq-prop">
+                    <i class="bi bi-house me-1"></i>
+                    {% if msg.property %}{{ msg.property.title[:30] }}{% else %}General inquiry{% endif %}
+                  </div>
+                  <div class="od-inq-msg">{{ msg.message[:80] }}{% if msg.message|length > 80 %}...{% endif %}</div>
+                </div>
+                <div class="od-inq-time">{{ msg.sent_at.strftime('%b %d') }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="od-empty-sm">
+              <i class="bi bi-chat-square"></i>
+              <p>No inquiries yet. Once your properties are live, tenants can message you here.</p>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Recent Reviews -->
+        <div class="od-card mt-4" id="reviewsSection">
+          <div class="od-card-head">
+            <h2 class="od-card-title"><i class="bi bi-star me-2 text-warning"></i>Recent Reviews</h2>
+          </div>
+
+          {% if recent_reviews %}
+            <div class="od-review-list">
+              {% for review in recent_reviews %}
+              <div class="od-review-item">
+                <div class="od-rev-header">
+                  <div class="od-rev-stars">
+                    {% for i in range(1, 6) %}
+                      <i class="bi bi-star{% if i <= review.rating %}-fill text-warning{% endif %}"></i>
+                    {% endfor %}
+                    <span class="od-rev-rating">{{ review.rating }}.0</span>
+                  </div>
+                  <span class="od-rev-date">{{ review.created_at.strftime('%b %d') }}</span>
+                </div>
+                <div class="od-rev-prop">
+                  <i class="bi bi-house me-1 text-muted"></i>{{ review.property.title[:35] if review.property else 'N/A' }}
+                </div>
+                {% if review.review %}
+                  <div class="od-rev-text">"{{ review.review[:100] }}{% if review.review|length > 100 %}...{% endif %}"</div>
+                {% endif %}
+                <div class="od-rev-author">— {{ review.reviewer.full_name }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="od-empty-sm">
+              <i class="bi bi-star-half"></i>
+              <p>No reviews yet. Reviews will appear here once tenants rate your properties.</p>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Quick Links -->
+        <div class="od-card mt-4">
+          <div class="od-card-head">
+            <h2 class="od-card-title"><i class="bi bi-lightning-charge me-2 text-warning"></i>Quick Actions</h2>
+          </div>
+          <div class="od-quick-links">
+            <a href="{{ url_for('owner.add_property') }}" class="od-quick-link">
+              <div class="od-ql-icon" style="background:#eff6ff;color:#3b82f6;"><i class="bi bi-plus-lg"></i></div>
+              <span>Add Property</span>
+            </a>
+            <a href="{{ url_for('owner.owner_profile') }}" class="od-quick-link">
+              <div class="od-ql-icon" style="background:#f0fdf4;color:#22c55e;"><i class="bi bi-person-check"></i></div>
+              <span>Edit Profile</span>
+            </a>
+            <a href="{{ url_for('main.listings') }}" class="od-quick-link">
+              <div class="od-ql-icon" style="background:#fdf2f8;color:#ec4899;"><i class="bi bi-search"></i></div>
+              <span>Browse Listings</span>
+            </a>
+            <a href="{{ url_for('main.index') }}" class="od-quick-link">
+              <div class="od-ql-icon" style="background:#fff5f5;color:#ef4444;"><i class="bi bi-house"></i></div>
+              <span>View Site</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
     </div>
-</div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h6 class="modal-title fw-bold">Delete Property</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-0">Are you sure you want to delete <strong id="deletePropName"></strong>? This cannot be undone.</p>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                </form>
-            </div>
-        </div>
-    </div>
+<div class="od-modal-overlay" id="deleteOverlay" onclick="closeDeleteModal()"></div>
+<div class="od-modal" id="deleteModal">
+  <div class="od-modal-header">
+    <h3><i class="bi bi-trash3 me-2 text-danger"></i>Delete Property</h3>
+    <button onclick="closeDeleteModal()" class="od-modal-close"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="od-modal-body">
+    <p>Are you sure you want to delete <strong id="deletePropName"></strong>?</p>
+    <p class="od-modal-warn"><i class="bi bi-exclamation-triangle me-1"></i>This action cannot be undone. All images, reviews and favorites for this property will also be deleted.</p>
+  </div>
+  <div class="od-modal-footer">
+    <button onclick="closeDeleteModal()" class="od-btn-secondary">Cancel</button>
+    <form id="deleteForm" method="POST" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="od-btn-danger">
+        <i class="bi bi-trash me-1"></i>Yes, Delete
+      </button>
+    </form>
+  </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-function confirmDelete(propId, propName) {
-    document.getElementById('deletePropName').textContent = propName;
-    document.getElementById('deleteForm').action = '/owner/property/' + propId + '/delete';
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+// ── Property filter tabs ──
+document.querySelectorAll('.od-ptab').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.od-ptab').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const filter = this.dataset.filter;
+    document.querySelectorAll('.od-prop-row').forEach(row => {
+      if (filter === 'all') { row.style.display = ''; return; }
+      const vs = row.dataset.vstatus;
+      const as = row.dataset.astatus;
+      const show = (filter === 'verified' && vs === 'verified') ||
+                   (filter === 'pending'  && vs === 'pending')  ||
+                   (filter === 'available'&& as === 'available')||
+                   (filter === 'occupied' && as === 'occupied');
+      row.style.display = show ? '' : 'none';
+    });
+  });
+});
+
+// ── Delete modal ──
+function confirmDelete(id, name) {
+  document.getElementById('deletePropName').textContent = name;
+  document.getElementById('deleteForm').action = '/owner/property/' + id + '/delete';
+  document.getElementById('deleteOverlay').style.display = 'block';
+  document.getElementById('deleteModal').style.display = 'block';
+}
+function closeDeleteModal() {
+  document.getElementById('deleteOverlay').style.display = 'none';
+  document.getElementById('deleteModal').style.display = 'none';
 }
 </script>
 {% endblock %}

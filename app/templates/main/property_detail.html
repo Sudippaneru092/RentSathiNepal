@@ -1,451 +1,700 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="container py-4">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('main.index', city=property.city) }}">{{ property.city }}</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{ property.title }}</li>
-        </ol>
-    </nav>
 
-    <div class="row g-4">
-        <!-- Main Content -->
-        <div class="col-lg-8">
-            <!-- Image Gallery -->
-            {% if images %}
-                {% if images|length == 1 %}
-                    <img src="{{ url_for('static', filename=images[0].image_path) }}"
-                         class="img-fluid rounded-3 w-100 mb-3 property-detail-img" alt="{{ property.title }}">
-                {% else %}
-                    <div id="propertyCarousel" class="carousel slide mb-3 rounded-3 overflow-hidden shadow-sm" data-bs-ride="carousel">
-                        <div class="carousel-indicators">
-                            {% for img in images %}
-                                <button type="button" data-bs-target="#propertyCarousel"
-                                        data-bs-slide-to="{{ loop.index0 }}"
-                                        class="{% if loop.first %}active{% endif %}"></button>
-                            {% endfor %}
-                        </div>
-                        <div class="carousel-inner">
-                            {% for img in images %}
-                                <div class="carousel-item {% if loop.first %}active{% endif %}">
-                                    <img src="{{ url_for('static', filename=img.image_path) }}"
-                                         class="d-block w-100 property-detail-img" alt="{{ property.title }}">
-                                </div>
-                            {% endfor %}
-                        </div>
-                        <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon"></span>
-                        </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
-                            <span class="carousel-control-next-icon"></span>
-                        </button>
-                    </div>
-                    <!-- Thumbnail strip -->
-                    <div class="d-flex gap-2 mb-3 overflow-auto pb-1">
-                        {% for img in images %}
-                            <img src="{{ url_for('static', filename=img.image_path) }}"
-                                 class="rounded cursor-pointer img-thumbnail flex-shrink-0"
-                                 style="width:80px;height:60px;object-fit:cover;"
-                                 onclick="goToSlide({{ loop.index0 }})" alt="">
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% else %}
-                <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3"
-                     style="height: 350px;">
-                    <i class="bi bi-house text-muted" style="font-size: 5rem;"></i>
-                </div>
-            {% endif %}
-
-            <!-- Title & Basic Info -->
-            <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
-                <div>
-                    <h2 class="fw-bold mb-1">{{ property.title }}</h2>
-                    <p class="text-muted mb-0">
-                        <i class="bi bi-geo-alt me-1"></i>
-                        {{ property.address or '' }}
-                        {% if property.area %}, {{ property.area }}{% endif %}
-                        {% if property.city %}, {{ property.city }}{% endif %}
-                        {% if property.district %}, {{ property.district }}{% endif %}
-                    </p>
-                </div>
-                <div class="text-end mt-2 mt-md-0">
-                    <div class="h3 text-primary fw-bold mb-0">
-                        Rs. {{ "{:,.0f}".format(property.price) }}
-                        <small class="fs-6 text-muted fw-normal">/month</small>
-                    </div>
-                    <span class="badge bg-{{ 'success' if property.availability_status == 'available' else 'secondary' }} mt-1">
-                        {{ property.availability_status.capitalize() }}
-                    </span>
-                </div>
-            </div>
-
-            <!-- Tags -->
-            <div class="d-flex flex-wrap gap-2 mb-4">
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 text-capitalize">
-                    <i class="bi bi-house me-1"></i>{{ property.property_type }}
-                </span>
-                {% if property.furnished %}
-                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
-                        <i class="bi bi-check-circle me-1"></i>Furnished
-                    </span>
-                {% else %}
-                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
-                        Unfurnished
-                    </span>
-                {% endif %}
-                {% if property.parking %}
-                    <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2">
-                        <i class="bi bi-car-front me-1"></i>Parking Available
-                    </span>
-                {% endif %}
-            </div>
-
-            <!-- Property Stats -->
-            <div class="row g-3 mb-4">
-                <div class="col-4 col-md-2">
-                    <div class="text-center p-3 bg-light rounded-3">
-                        <i class="bi bi-door-open fs-4 text-primary mb-1 d-block"></i>
-                        <div class="fw-bold">{{ property.bedrooms }}</div>
-                        <small class="text-muted">Bedrooms</small>
-                    </div>
-                </div>
-                <div class="col-4 col-md-2">
-                    <div class="text-center p-3 bg-light rounded-3">
-                        <i class="bi bi-droplet fs-4 text-primary mb-1 d-block"></i>
-                        <div class="fw-bold">{{ property.bathrooms }}</div>
-                        <small class="text-muted">Bathrooms</small>
-                    </div>
-                </div>
-                {% if property.area %}
-                    <div class="col-4 col-md-3">
-                        <div class="text-center p-3 bg-light rounded-3">
-                            <i class="bi bi-rulers fs-4 text-primary mb-1 d-block"></i>
-                            <div class="fw-bold small">{{ property.area }}</div>
-                            <small class="text-muted">Area</small>
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-
-            <!-- Description -->
-            {% if property.description %}
-                <div class="mb-4">
-                    <h5 class="fw-bold mb-3">About this Property</h5>
-                    <p class="text-muted lh-lg">{{ property.description }}</p>
-                </div>
-            {% endif %}
-
-            <!-- Amenities -->
-            {% if amenities %}
-                <div class="mb-4">
-                    <h5 class="fw-bold mb-3">Amenities</h5>
-                    <div class="row g-2">
-                        {% for amenity in amenities %}
-                            <div class="col-6 col-md-4 col-lg-3">
-                                <div class="d-flex align-items-center gap-2 p-2 bg-light rounded">
-                                    <i class="bi bi-check-circle-fill text-success"></i>
-                                    <span class="small">{{ amenity.amenity_name }}</span>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-
-            <!-- Reviews Section -->
-            <div class="mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0">
-                        Reviews
-                        {% if reviews %}
-                            <span class="badge bg-secondary ms-2">{{ reviews|length }}</span>
-                        {% endif %}
-                    </h5>
-                    {% set avg = property.average_rating() %}
-                    {% if avg > 0 %}
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="rating-stars">
-                                {% for i in range(1, 6) %}
-                                    <i class="bi bi-star{% if i <= avg %}-fill text-warning{% else %} text-muted{% endif %}"></i>
-                                {% endfor %}
-                            </div>
-                            <span class="fw-semibold">{{ avg }}/5</span>
-                        </div>
-                    {% endif %}
-                </div>
-
-                {% if reviews %}
-                    {% for review in reviews %}
-                        <div class="card border-0 bg-light mb-3">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="avatar-circle bg-primary text-white fw-bold">
-                                            {{ review.reviewer.full_name[0].upper() }}
-                                        </span>
-                                        <div>
-                                            <div class="fw-semibold small">{{ review.reviewer.full_name }}</div>
-                                            <small class="text-muted">{{ review.created_at.strftime('%b %d, %Y') }}</small>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        {% for i in range(1, 6) %}
-                                            <i class="bi bi-star{% if i <= review.rating %}-fill text-warning{% else %} text-muted{% endif %} small"></i>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% if review.review %}
-                                    <p class="mb-0 text-muted">{{ review.review }}</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-muted">No reviews yet. Be the first to review!</p>
-                {% endif %}
-
-                <!-- Add Review Form -->
-                {% if current_user.is_authenticated and current_user.role == 'user' %}
-                    <div class="card border-0 shadow-sm mt-3">
-                        <div class="card-body">
-                            <h6 class="fw-semibold mb-3">Write a Review</h6>
-                            <form method="POST" action="{{ url_for('main.add_review', property_id=property.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Rating</label>
-                                    <div class="star-rating d-flex gap-2" id="starRating">
-                                        {% for i in range(1, 6) %}
-                                            <label class="star-label fs-4" for="star{{ i }}">
-                                                <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" class="d-none" required>
-                                                <i class="bi bi-star text-muted" data-val="{{ i }}"></i>
-                                            </label>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Your Review (optional)</label>
-                                    <textarea name="review" class="form-control" rows="3"
-                                              placeholder="Share your experience..."></textarea>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-send me-1"></i>Submit Review
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                {% elif not current_user.is_authenticated %}
-                    <div class="alert alert-light border mt-3">
-                        <a href="{{ url_for('auth.login') }}" class="text-primary fw-semibold">Login</a>
-                        to leave a review.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-            <!-- Price Card -->
-            <div class="card border-0 shadow-sm mb-3 sticky-top" style="top: 80px; z-index: 10;">
-                <div class="card-body">
-                    <div class="text-center mb-3">
-                        <div class="h2 text-primary fw-bold">Rs. {{ "{:,.0f}".format(property.price) }}</div>
-                        <small class="text-muted">per month</small>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    {% if current_user.is_authenticated %}
-                        {% if current_user.role == 'user' %}
-                            <!-- Favorite button -->
-                            <form method="POST"
-                                  action="{{ url_for('main.toggle_favorite', property_id=property.id) }}"
-                                  class="d-grid mb-2">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit"
-                                        class="btn {% if is_favorite %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                                    <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} me-2"></i>
-                                    {% if is_favorite %}Remove from Favorites{% else %}Save to Favorites{% endif %}
-                                </button>
-                            </form>
-
-                            <!-- Contact Owner -->
-                            {% if current_user.id != property.owner_id %}
-                                <button type="button" class="btn btn-primary w-100 mb-2"
-                                        data-bs-toggle="modal" data-bs-target="#contactModal">
-                                    <i class="bi bi-chat-text me-2"></i>Contact Owner
-                                </button>
-                            {% endif %}
-                        {% endif %}
-
-                        <!-- Report Property -->
-                        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1"
-                                data-bs-toggle="modal" data-bs-target="#reportModal">
-                            <i class="bi bi-flag me-1"></i>Report Property
-                        </button>
-                    {% else %}
-                        <a href="{{ url_for('auth.login') }}" class="btn btn-primary w-100 mb-2">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Login to Contact
-                        </a>
-                    {% endif %}
-
-                    <hr>
-                    <!-- Owner Info -->
-                    <h6 class="fw-semibold mb-3">Listed by</h6>
-                    <div class="d-flex align-items-center gap-3">
-                        {% if owner.profile_image %}
-                            <img src="{{ url_for('static', filename=owner.profile_image) }}"
-                                 class="rounded-circle" width="48" height="48" style="object-fit:cover;" alt="">
-                        {% else %}
-                            <div class="avatar-circle bg-primary text-white fw-bold fs-5 flex-shrink-0">
-                                {{ owner.full_name[0].upper() }}
-                            </div>
-                        {% endif %}
-                        <div>
-                            <div class="fw-semibold">{{ owner.full_name }}</div>
-                            <small class="text-muted">
-                                <i class="bi bi-shield-check text-success me-1"></i>Verified Owner
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Property Details Card -->
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-body">
-                    <h6 class="fw-semibold mb-3">Property Details</h6>
-                    <table class="table table-sm table-borderless mb-0">
-                        <tr>
-                            <td class="text-muted small">Type</td>
-                            <td class="fw-semibold small text-capitalize">{{ property.property_type }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted small">Bedrooms</td>
-                            <td class="fw-semibold small">{{ property.bedrooms }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted small">Bathrooms</td>
-                            <td class="fw-semibold small">{{ property.bathrooms }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted small">Furnished</td>
-                            <td class="fw-semibold small">{{ 'Yes' if property.furnished else 'No' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted small">Parking</td>
-                            <td class="fw-semibold small">{{ 'Yes' if property.parking else 'No' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted small">City</td>
-                            <td class="fw-semibold small">{{ property.city }}</td>
-                        </tr>
-                        {% if property.district %}
-                            <tr>
-                                <td class="text-muted small">District</td>
-                                <td class="fw-semibold small">{{ property.district }}</td>
-                            </tr>
-                        {% endif %}
-                        <tr>
-                            <td class="text-muted small">Listed on</td>
-                            <td class="fw-semibold small">{{ property.created_at.strftime('%b %d, %Y') }}</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- ── Breadcrumb ── -->
+<div class="pd-breadcrumb">
+  <div class="container">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span class="sep"><i class="bi bi-chevron-right"></i></span>
+    <a href="{{ url_for('main.listings', city=property.city) }}">{{ property.city }}</a>
+    <span class="sep"><i class="bi bi-chevron-right"></i></span>
+    <span>{{ property.title }}</span>
+  </div>
 </div>
 
-<!-- Contact Owner Modal -->
-{% if current_user.is_authenticated and current_user.role == 'user' %}
-<div class="modal fade" id="contactModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title fw-bold">Contact Owner</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="container pd-container">
+  <div class="pd-layout">
+
+    <!-- ══════════════════════════════════
+         LEFT — Main Content
+    ══════════════════════════════════ -->
+    <div class="pd-main">
+
+      <!-- ── IMAGE GALLERY ── -->
+      <div class="pd-gallery">
+        {% if images %}
+          {% if images|length == 1 %}
+            <!-- Single image -->
+            <div class="pd-gallery-single">
+              {% set img = images[0].image_path %}
+              {% if img.startswith('http') %}
+                <img src="{{ img }}" alt="{{ property.title }}" class="pd-main-img">
+              {% else %}
+                <img src="{{ url_for('static', filename=img) }}" alt="{{ property.title }}" class="pd-main-img">
+              {% endif %}
             </div>
-            <form method="POST" action="{{ url_for('main.contact_owner', property_id=property.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="modal-body">
-                    <p class="text-muted small mb-3">Send a message to <strong>{{ owner.full_name }}</strong> about this property.</p>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Message</label>
-                        <textarea name="message" class="form-control" rows="4" required
-                                  placeholder="Hi, I am interested in this property. Is it still available?"></textarea>
+          {% elif images|length == 2 %}
+            <!-- Two images side by side -->
+            <div class="pd-gallery-grid pd-gallery-2">
+              {% for img_obj in images %}
+                {% set img = img_obj.image_path %}
+                <div class="pd-gallery-cell {% if loop.first %}pd-gallery-main{% endif %}" onclick="openLightbox({{ loop.index0 }})">
+                  {% if img.startswith('http') %}
+                    <img src="{{ img }}" alt="{{ property.title }}">
+                  {% else %}
+                    <img src="{{ url_for('static', filename=img) }}" alt="{{ property.title }}">
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <!-- 3+ images — Airbnb-style grid -->
+            <div class="pd-gallery-grid pd-gallery-3plus">
+              {% for img_obj in images[:5] %}
+                {% set img = img_obj.image_path %}
+                <div class="pd-gallery-cell {% if loop.first %}pd-gallery-main{% endif %}"
+                     onclick="openLightbox({{ loop.index0 }})">
+                  {% if img.startswith('http') %}
+                    <img src="{{ img }}" alt="{{ property.title }}">
+                  {% else %}
+                    <img src="{{ url_for('static', filename=img) }}" alt="{{ property.title }}">
+                  {% endif %}
+                  {% if loop.last and images|length > 5 %}
+                    <div class="pd-gallery-more-overlay">
+                      <i class="bi bi-grid me-2"></i>+{{ images|length - 5 }} more
                     </div>
+                  {% endif %}
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-send me-1"></i>Send Message
-                    </button>
-                </div>
-            </form>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <!-- Show all photos button -->
+          {% if images|length > 1 %}
+          <button class="pd-show-all-btn" onclick="openLightbox(0)">
+            <i class="bi bi-grid me-2"></i>Show all {{ images|length }} photos
+          </button>
+          {% endif %}
+
+        {% else %}
+          <!-- No images placeholder -->
+          <div class="pd-no-image">
+            <i class="bi bi-house"></i>
+            <span>No photos available</span>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- ── TITLE ROW ── -->
+      <div class="pd-title-row">
+        <div class="pd-title-left">
+          <div class="pd-badges">
+            <span class="pd-badge-type">{{ property.property_type.capitalize() }}</span>
+            {% if property.verification_status == 'verified' %}
+              <span class="pd-badge-verified"><i class="bi bi-patch-check-fill me-1"></i>Verified</span>
+            {% endif %}
+            {% if property.furnished %}
+              <span class="pd-badge-furnished">Furnished</span>
+            {% endif %}
+          </div>
+          <h1 class="pd-title">{{ property.title }}</h1>
+          <div class="pd-location">
+            <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+            {{ property.address or '' }}{% if property.address and property.city %}, {% endif %}
+            {% if property.area %}{{ property.area }}, {% endif %}
+            {{ property.city }}{% if property.district %}, {{ property.district }}{% endif %}
+          </div>
         </div>
+        <div class="pd-title-actions">
+          <!-- Favorite -->
+          {% if current_user.is_authenticated and current_user.role == 'user' %}
+            <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=property.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="pd-action-btn {% if is_favorite %}pd-action-active{% endif %}" title="{% if is_favorite %}Remove from favorites{% else %}Save{% endif %}">
+                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %}"></i>
+                <span>{{ 'Saved' if is_favorite else 'Save' }}</span>
+              </button>
+            </form>
+          {% else %}
+            <a href="{{ url_for('auth.login') }}" class="pd-action-btn" title="Save">
+              <i class="bi bi-heart"></i><span>Save</span>
+            </a>
+          {% endif %}
+          <!-- Share -->
+          <button class="pd-action-btn" onclick="shareProperty()" title="Share">
+            <i class="bi bi-share"></i><span>Share</span>
+          </button>
+          <!-- Report -->
+          {% if current_user.is_authenticated %}
+            <button class="pd-action-btn" data-bs-toggle="modal" data-bs-target="#reportModal" title="Report">
+              <i class="bi bi-flag"></i><span>Report</span>
+            </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ── KEY STATS ── -->
+      <div class="pd-stats">
+        <div class="pd-stat">
+          <i class="bi bi-door-open-fill pd-stat-icon" style="color:#3b82f6;"></i>
+          <div>
+            <div class="pd-stat-num">{{ property.bedrooms }}</div>
+            <div class="pd-stat-lbl">Bedroom{{ 's' if property.bedrooms != 1 }}</div>
+          </div>
+        </div>
+        <div class="pd-stat-div"></div>
+        <div class="pd-stat">
+          <i class="bi bi-droplet-fill pd-stat-icon" style="color:#06b6d4;"></i>
+          <div>
+            <div class="pd-stat-num">{{ property.bathrooms }}</div>
+            <div class="pd-stat-lbl">Bathroom{{ 's' if property.bathrooms != 1 }}</div>
+          </div>
+        </div>
+        {% if property.area %}
+          <div class="pd-stat-div"></div>
+          <div class="pd-stat">
+            <i class="bi bi-rulers pd-stat-icon" style="color:#8b5cf6;"></i>
+            <div>
+              <div class="pd-stat-num">{{ property.area }}</div>
+              <div class="pd-stat-lbl">sq.ft</div>
+            </div>
+          </div>
+        {% endif %}
+        <div class="pd-stat-div"></div>
+        <div class="pd-stat">
+          <i class="bi bi-car-front-fill pd-stat-icon" style="color:#22c55e;"></i>
+          <div>
+            <div class="pd-stat-num">{{ 'Yes' if property.parking else 'No' }}</div>
+            <div class="pd-stat-lbl">Parking</div>
+          </div>
+        </div>
+        <div class="pd-stat-div"></div>
+        <div class="pd-stat">
+          <i class="bi bi-calendar-check-fill pd-stat-icon" style="color:#f97316;"></i>
+          <div>
+            <div class="pd-stat-num">{{ property.availability_status.capitalize() }}</div>
+            <div class="pd-stat-lbl">Status</div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="pd-divider">
+
+      <!-- ── OWNER INFO (inline) ── -->
+      <div class="pd-owner-inline">
+        <div class="pd-owner-avatar">
+          {% if owner.profile_image %}
+            {% if owner.profile_image.startswith('http') %}
+              <img src="{{ owner.profile_image }}" alt="{{ owner.full_name }}">
+            {% else %}
+              <img src="{{ url_for('static', filename=owner.profile_image) }}" alt="{{ owner.full_name }}">
+            {% endif %}
+          {% else %}
+            {{ owner.full_name[0].upper() }}
+          {% endif %}
+        </div>
+        <div>
+          <div class="pd-owner-name">{{ owner.full_name }}</div>
+          <div class="pd-owner-meta">
+            <i class="bi bi-shield-fill-check text-success me-1"></i>Verified Owner
+            &nbsp;·&nbsp;
+            Listed {{ property.created_at.strftime('%b %Y') }}
+          </div>
+        </div>
+      </div>
+
+      <hr class="pd-divider">
+
+      <!-- ── DESCRIPTION ── -->
+      {% if property.description %}
+      <div class="pd-section">
+        <h2 class="pd-section-title">About this property</h2>
+        <p class="pd-description" id="descText">{{ property.description }}</p>
+        {% if property.description|length > 300 %}
+          <button class="pd-show-more-btn" id="descToggle" onclick="toggleDesc()">
+            Show more <i class="bi bi-chevron-down ms-1"></i>
+          </button>
+        {% endif %}
+      </div>
+      <hr class="pd-divider">
+      {% endif %}
+
+      <!-- ── AMENITIES ── -->
+      {% if amenities %}
+      <div class="pd-section">
+        <h2 class="pd-section-title">What this place offers</h2>
+        <div class="pd-amenities-grid" id="amenitiesGrid">
+          {% for amenity in amenities %}
+            <div class="pd-amenity {% if loop.index > 8 %}pd-amenity-hidden{% endif %}">
+              <i class="bi bi-check-circle-fill text-success pd-amenity-icon"></i>
+              {{ amenity.amenity_name }}
+            </div>
+          {% endfor %}
+        </div>
+        {% if amenities|length > 8 %}
+          <button class="pd-show-more-btn mt-3" id="amenityToggle" onclick="toggleAmenities()">
+            Show all {{ amenities|length }} amenities <i class="bi bi-chevron-down ms-1"></i>
+          </button>
+        {% endif %}
+      </div>
+      <hr class="pd-divider">
+      {% endif %}
+
+      <!-- ── MAP ── -->
+      {% if property.latitude and property.longitude %}
+      <div class="pd-section">
+        <h2 class="pd-section-title">Location</h2>
+        <p class="pd-location-text">
+          <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+          {% if property.area %}{{ property.area }}, {% endif %}{{ property.city }}{% if property.district %}, {{ property.district }}{% endif %}
+        </p>
+        <div class="pd-map-wrap" id="pdMap"></div>
+        <p class="pd-map-note">Exact location provided after booking confirmation.</p>
+      </div>
+      <hr class="pd-divider">
+      {% endif %}
+
+      <!-- ── REVIEWS ── -->
+      <div class="pd-section">
+        {% set avg = property.average_rating() %}
+        <div class="pd-reviews-header">
+          <h2 class="pd-section-title mb-0">
+            {% if avg > 0 %}
+              <i class="bi bi-star-fill text-warning me-2"></i>{{ avg }}
+              <span class="pd-review-count">&nbsp;·&nbsp; {{ reviews|length }} review{{ 's' if reviews|length != 1 }}</span>
+            {% else %}
+              Reviews
+            {% endif %}
+          </h2>
+        </div>
+
+        {% if reviews %}
+          <div class="pd-reviews-grid" id="reviewsGrid">
+            {% for review in reviews %}
+              <div class="pd-review {% if loop.index > 4 %}pd-review-hidden{% endif %}">
+                <div class="pd-review-header">
+                  <div class="pd-review-avatar">{{ review.reviewer.full_name[0].upper() }}</div>
+                  <div>
+                    <div class="pd-review-name">{{ review.reviewer.full_name }}</div>
+                    <div class="pd-review-date">{{ review.created_at.strftime('%B %Y') }}</div>
+                  </div>
+                  <div class="pd-review-stars ms-auto">
+                    {% for i in range(1, 6) %}
+                      <i class="bi bi-star{% if i <= review.rating %}-fill text-warning{% endif %} small"></i>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% if review.review %}
+                  <p class="pd-review-text">{{ review.review }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          {% if reviews|length > 4 %}
+            <button class="pd-show-more-btn mt-3" id="reviewToggle" onclick="toggleReviews()">
+              Show all {{ reviews|length }} reviews <i class="bi bi-chevron-down ms-1"></i>
+            </button>
+          {% endif %}
+        {% else %}
+          <p class="text-muted">No reviews yet — be the first!</p>
+        {% endif %}
+
+        <!-- Write a review -->
+        {% if current_user.is_authenticated and current_user.role == 'user' %}
+          <div class="pd-write-review">
+            <h3 class="pd-write-title">Write a Review</h3>
+            <form method="POST" action="{{ url_for('main.add_review', property_id=property.id) }}" id="reviewForm">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="pd-star-rating mb-3" id="starRating">
+                <input type="hidden" name="rating" id="ratingInput" value="">
+                {% for i in range(1, 6) %}
+                  <button type="button" class="pd-star-btn" data-val="{{ i }}" onclick="setRating({{ i }})">
+                    <i class="bi bi-star" id="star{{ i }}"></i>
+                  </button>
+                {% endfor %}
+                <span class="pd-star-label" id="starLabel">Select a rating</span>
+              </div>
+              <textarea name="review" class="pd-review-textarea"
+                        placeholder="Share your experience with this property..."
+                        rows="3"></textarea>
+              <button type="submit" class="pd-submit-review-btn">
+                <i class="bi bi-send me-2"></i>Submit Review
+              </button>
+            </form>
+          </div>
+        {% elif not current_user.is_authenticated %}
+          <div class="pd-login-prompt">
+            <i class="bi bi-star me-2 text-warning"></i>
+            <a href="{{ url_for('auth.login') }}" class="pd-login-link">Sign in</a> to leave a review
+          </div>
+        {% endif %}
+      </div>
+
+    </div><!-- /pd-main -->
+
+    <!-- ══════════════════════════════════
+         RIGHT — Sticky Contact Card
+    ══════════════════════════════════ -->
+    <div class="pd-sidebar">
+      <div class="pd-contact-card" id="contactCard">
+
+        <!-- Price -->
+        <div class="pd-card-price">
+          <span class="pd-card-amount">Rs. {{ "{:,.0f}".format(property.price) }}</span>
+          <span class="pd-card-period">/month</span>
+        </div>
+
+        <!-- Rating summary -->
+        {% set avg = property.average_rating() %}
+        {% if avg > 0 %}
+          <div class="pd-card-rating">
+            <i class="bi bi-star-fill text-warning me-1"></i>
+            <strong>{{ avg }}</strong>
+            <span class="text-muted ms-1">· {{ reviews|length }} review{{ 's' if reviews|length != 1 }}</span>
+          </div>
+        {% endif %}
+
+        <!-- Contact form (inline, not modal) -->
+        {% if current_user.is_authenticated and current_user.role == 'user' and current_user.id != property.owner_id %}
+          {# Check for active booking by this user #}
+          {% set active_booking = namespace(obj=None) %}
+          {% for b in property.bookings.all() %}
+            {% if b.tenant_id == current_user.id and b.status in ['pending', 'confirmed'] and not active_booking.obj %}
+              {% set active_booking.obj = b %}
+            {% endif %}
+          {% endfor %}
+
+          {% if active_booking.obj %}
+            <div class="pd-booking-status pd-bs-{{ active_booking.obj.status }}">
+              {% if active_booking.obj.status == 'pending' %}
+                <i class="bi bi-clock-fill fs-5"></i>
+                <div>
+                  <div>Booking Request Pending</div>
+                  <div class="pd-bs-detail">Move-in: {{ active_booking.obj.move_in_date.strftime('%B %d, %Y') }}</div>
+                  <div class="pd-bs-detail">Submitted {{ active_booking.obj.created_at.strftime('%b %d') }}</div>
+                </div>
+              {% else %}
+                <i class="bi bi-check-circle-fill fs-5"></i>
+                <div>
+                  <div>Booking Confirmed!</div>
+                  <div class="pd-bs-detail">Move-in: {{ active_booking.obj.move_in_date.strftime('%B %d, %Y') }}</div>
+                </div>
+              {% endif %}
+            </div>
+            <a href="{{ url_for('user.my_bookings') }}" class="pd-save-btn text-center text-decoration-none mb-2">
+              <i class="bi bi-calendar-check me-2"></i>View My Bookings
+            </a>
+
+          {% else %}
+            <form method="POST" action="{{ url_for('main.book_property', property_id=property.id) }}" class="pd-contact-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="pd-form-field">
+                <label>Move-in Date *</label>
+                <input type="date" name="move_in_date" class="pd-input" required
+                       min="{{ now.strftime('%Y-%m-%d') }}">
+              </div>
+              <div class="pd-form-field">
+                <label>Message <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
+                <textarea name="message" class="pd-input pd-textarea"
+                          placeholder="Hi, I'm interested in renting this property from the selected date..."
+                          rows="3"></textarea>
+              </div>
+              <button type="submit" class="pd-request-btn">
+                <i class="bi bi-calendar-check me-2"></i>Request to Book
+              </button>
+            </form>
+
+            <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=property.id) }}" class="mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="pd-save-btn {% if is_favorite %}pd-save-active{% endif %}">
+                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} me-2"></i>
+                {{ 'Saved' if is_favorite else 'Save to Favorites' }}
+              </button>
+            </form>
+          {% endif %}
+
+        {% elif current_user.is_authenticated and current_user.id == property.owner_id %}
+          <!-- Owner viewing their own property -->
+          <div class="pd-owner-notice">
+            <i class="bi bi-info-circle me-2"></i>
+            This is your property.
+            <a href="{{ url_for('owner.edit_property', property_id=property.id) }}" class="pd-owner-edit-link">Edit listing</a>
+          </div>
+
+        {% else %}
+          <!-- Not logged in -->
+          <div class="pd-card-cta">
+            <a href="{{ url_for('auth.login') }}" class="pd-request-btn">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Sign in to Contact
+            </a>
+            <p class="pd-cta-sub">or <a href="{{ url_for('auth.register') }}">create a free account</a></p>
+          </div>
+        {% endif %}
+
+        <!-- Owner info in card -->
+        <div class="pd-card-owner">
+          <div class="pd-card-owner-avatar">
+            {% if owner.profile_image %}
+              {% if owner.profile_image.startswith('http') %}
+                <img src="{{ owner.profile_image }}" alt="{{ owner.full_name }}">
+              {% else %}
+                <img src="{{ url_for('static', filename=owner.profile_image) }}" alt="{{ owner.full_name }}">
+              {% endif %}
+            {% else %}
+              {{ owner.full_name[0].upper() }}
+            {% endif %}
+          </div>
+          <div>
+            <div class="pd-card-owner-name">{{ owner.full_name }}</div>
+            <div class="pd-card-owner-role">
+              <i class="bi bi-shield-fill-check text-success me-1" style="font-size:0.75rem;"></i>Verified Owner
+            </div>
+          </div>
+        </div>
+
+        <!-- Property details mini table -->
+        <div class="pd-card-details">
+          <div class="pd-card-detail">
+            <span class="pd-cd-label">Type</span>
+            <span class="pd-cd-value text-capitalize">{{ property.property_type }}</span>
+          </div>
+          <div class="pd-card-detail">
+            <span class="pd-cd-label">Bedrooms</span>
+            <span class="pd-cd-value">{{ property.bedrooms }}</span>
+          </div>
+          <div class="pd-card-detail">
+            <span class="pd-cd-label">Bathrooms</span>
+            <span class="pd-cd-value">{{ property.bathrooms }}</span>
+          </div>
+          <div class="pd-card-detail">
+            <span class="pd-cd-label">Furnished</span>
+            <span class="pd-cd-value">{{ 'Yes' if property.furnished else 'No' }}</span>
+          </div>
+          <div class="pd-card-detail">
+            <span class="pd-cd-label">Province</span>
+            <span class="pd-cd-value">{{ property.province or '—' }}</span>
+          </div>
+          <div class="pd-card-detail">
+            <span class="pd-cd-label">Listed</span>
+            <span class="pd-cd-value">{{ property.created_at.strftime('%b %d, %Y') }}</span>
+          </div>
+        </div>
+
+      </div>
     </div>
+
+  </div><!-- /pd-layout -->
+</div>
+
+<!-- ══════════════════════════════════
+     LIGHTBOX
+══════════════════════════════════ -->
+{% if images %}
+<div class="pd-lightbox" id="lightbox">
+  <div class="pd-lb-overlay" onclick="closeLightbox()"></div>
+  <button class="pd-lb-close" onclick="closeLightbox()"><i class="bi bi-x-lg"></i></button>
+  <button class="pd-lb-prev" onclick="lbPrev()"><i class="bi bi-chevron-left"></i></button>
+  <button class="pd-lb-next" onclick="lbNext()"><i class="bi bi-chevron-right"></i></button>
+  <div class="pd-lb-content">
+    <img id="lbImg" src="" alt="{{ property.title }}">
+    <div class="pd-lb-counter" id="lbCounter"></div>
+  </div>
+  <div class="pd-lb-thumbs" id="lbThumbs">
+    {% for img_obj in images %}
+      {% set img = img_obj.image_path %}
+      <div class="pd-lb-thumb" onclick="openLightbox({{ loop.index0 }})">
+        {% if img.startswith('http') %}
+          <img src="{{ img }}" alt="">
+        {% else %}
+          <img src="{{ url_for('static', filename=img) }}" alt="">
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
 </div>
 {% endif %}
 
 <!-- Report Modal -->
 {% if current_user.is_authenticated %}
 <div class="modal fade" id="reportModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title fw-bold">Report Property</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('main.report_property', property_id=property.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Reason for Report</label>
-                        <textarea name="reason" class="form-control" rows="3" required
-                                  placeholder="Describe the issue with this property listing..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-flag me-1"></i>Submit Report
-                    </button>
-                </div>
-            </form>
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4 border-0">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Report this listing</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('main.report_property', property_id=property.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Tell us what's wrong with this listing.</p>
+          <textarea name="reason" class="form-control rounded-3" rows="4" required
+                    placeholder="Describe the issue..."></textarea>
         </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4">Submit Report</button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 {% endif %}
+
 {% endblock %}
 
 {% block scripts %}
+<!-- Leaflet for map -->
+{% if property.latitude and property.longitude %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endif %}
+
 <script>
-// Star rating interaction
-document.querySelectorAll('.star-label').forEach(label => {
-    const icon = label.querySelector('i');
-    const input = label.querySelector('input');
-    label.addEventListener('click', () => {
-        const val = parseInt(icon.dataset.val);
-        document.querySelectorAll('.star-label i').forEach((star, idx) => {
-            if (idx < val) {
-                star.classList.replace('bi-star', 'bi-star-fill');
-                star.classList.add('text-warning');
-                star.classList.remove('text-muted');
-            } else {
-                star.classList.replace('bi-star-fill', 'bi-star');
-                star.classList.remove('text-warning');
-                star.classList.add('text-muted');
-            }
-        });
-    });
+/* ── Image data for lightbox ── */
+const IMAGES = [
+  {% for img_obj in images %}
+    {% set img = img_obj.image_path %}
+    "{% if img.startswith('http') %}{{ img }}{% else %}{{ url_for('static', filename=img) }}{% endif %}"{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+let lbIndex = 0;
+
+function openLightbox(idx) {
+  lbIndex = idx;
+  updateLightbox();
+  document.getElementById('lightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function updateLightbox() {
+  document.getElementById('lbImg').src = IMAGES[lbIndex];
+  document.getElementById('lbCounter').textContent = (lbIndex + 1) + ' / ' + IMAGES.length;
+  document.querySelectorAll('.pd-lb-thumb').forEach((t, i) => t.classList.toggle('active', i === lbIndex));
+}
+
+function lbPrev() { lbIndex = (lbIndex - 1 + IMAGES.length) % IMAGES.length; updateLightbox(); }
+function lbNext() { lbIndex = (lbIndex + 1) % IMAGES.length; updateLightbox(); }
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox')?.classList.contains('active')) return;
+  if (e.key === 'ArrowLeft') lbPrev();
+  if (e.key === 'ArrowRight') lbNext();
+  if (e.key === 'Escape') closeLightbox();
 });
 
-function goToSlide(idx) {
-    const carousel = bootstrap.Carousel.getOrCreateInstance(document.getElementById('propertyCarousel'));
-    carousel.to(idx);
+/* ── Description toggle ── */
+function toggleDesc() {
+  const el = document.getElementById('descText');
+  const btn = document.getElementById('descToggle');
+  el.classList.toggle('pd-description-truncated');
+  btn.innerHTML = el.classList.contains('pd-description-truncated')
+    ? 'Show more <i class="bi bi-chevron-down ms-1"></i>'
+    : 'Show less <i class="bi bi-chevron-up ms-1"></i>';
 }
+// Start truncated if long
+const descEl = document.getElementById('descText');
+if (descEl && descEl.textContent.trim().length > 300) {
+  descEl.classList.add('pd-description-truncated');
+}
+
+/* ── Amenities toggle ── */
+function toggleAmenities() {
+  const hidden = document.querySelectorAll('.pd-amenity-hidden');
+  const btn = document.getElementById('amenityToggle');
+  const isHidden = hidden[0]?.style.display !== 'flex';
+  hidden.forEach(el => el.style.display = isHidden ? 'flex' : 'none');
+  btn.innerHTML = isHidden
+    ? 'Show less <i class="bi bi-chevron-up ms-1"></i>'
+    : 'Show all {{ amenities|length }} amenities <i class="bi bi-chevron-down ms-1"></i>';
+}
+
+/* ── Reviews toggle ── */
+function toggleReviews() {
+  const hidden = document.querySelectorAll('.pd-review-hidden');
+  const btn = document.getElementById('reviewToggle');
+  const isHidden = hidden[0]?.style.display !== 'block';
+  hidden.forEach(el => el.style.display = isHidden ? 'block' : 'none');
+  btn.innerHTML = isHidden
+    ? 'Show less <i class="bi bi-chevron-up ms-1"></i>'
+    : 'Show all {{ reviews|length }} reviews <i class="bi bi-chevron-down ms-1"></i>';
+}
+
+/* ── Star rating ── */
+const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+function setRating(val) {
+  document.getElementById('ratingInput').value = val;
+  document.getElementById('starLabel').textContent = ratingLabels[val];
+  for (let i = 1; i <= 5; i++) {
+    const s = document.getElementById('star' + i);
+    s.classList.toggle('bi-star-fill', i <= val);
+    s.classList.toggle('bi-star', i > val);
+    s.classList.toggle('text-warning', i <= val);
+  }
+}
+// Hover effect
+document.querySelectorAll('.pd-star-btn').forEach(btn => {
+  btn.addEventListener('mouseenter', () => {
+    const v = parseInt(btn.dataset.val);
+    for (let i = 1; i <= 5; i++) {
+      const s = document.getElementById('star' + i);
+      s.classList.toggle('bi-star-fill', i <= v);
+      s.classList.toggle('bi-star', i > v);
+    }
+  });
+  btn.addEventListener('mouseleave', () => {
+    const current = parseInt(document.getElementById('ratingInput').value) || 0;
+    setRating(current);
+  });
+});
+
+/* ── Share ── */
+function shareProperty() {
+  if (navigator.share) {
+    navigator.share({ title: '{{ property.title }}', url: window.location.href });
+  } else {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      alert('Link copied to clipboard!');
+    });
+  }
+}
+
+/* ── Map ── */
+{% if property.latitude and property.longitude %}
+const map = L.map('pdMap', { zoomControl: true, scrollWheelZoom: false })
+  .setView([{{ property.latitude }}, {{ property.longitude }}], 15);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19
+}).addTo(map);
+
+const markerIcon = L.divIcon({
+  className: '',
+  html: '<div class="prop-map-marker"><i class="bi bi-house-fill"></i></div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+});
+
+L.marker([{{ property.latitude }}, {{ property.longitude }}], { icon: markerIcon })
+  .addTo(map)
+  .bindPopup(`<b>{{ property.title }}</b><br>Rs. {{ "{:,.0f}".format(property.price) }}/mo`)
+  .openPopup();
+{% endif %}
+
+/* ── Review form validation ── */
+document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
+  if (!document.getElementById('ratingInput').value) {
+    e.preventDefault();
+    document.getElementById('starLabel').textContent = '⚠ Please select a rating';
+    document.getElementById('starLabel').style.color = '#ef4444';
+  }
+});
 </script>
 {% endblock %}

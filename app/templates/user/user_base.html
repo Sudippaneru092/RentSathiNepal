@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set current_endpoint = request.endpoint %}
+
+<div class="user-layout" id="userLayout">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="user-sidebar" id="userSidebar">
+
+    <!-- Logo -->
+    <div class="user-sidebar-logo">
+      <div class="sidebar-logo-icon">
+        <i class="bi bi-house-fill"></i>
+      </div>
+      <div class="sidebar-logo-text">
+        <span class="sidebar-brand-name">RentSathi</span>
+        <span class="sidebar-brand-sub">Nepal — My Account</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="user-nav">
+
+      <a href="{{ url_for('user.dashboard') }}"
+         class="user-nav-item {% if current_endpoint == 'user.dashboard' %}active{% endif %}"
+         data-tooltip="Dashboard">
+        <i class="bi bi-speedometer2 user-nav-icon"></i>
+        <span class="user-nav-label">Dashboard</span>
+      </a>
+
+      <a href="{{ url_for('main.listings') }}"
+         class="user-nav-item {% if current_endpoint == 'main.listings' %}active{% endif %}"
+         data-tooltip="Browse Rentals">
+        <i class="bi bi-search user-nav-icon"></i>
+        <span class="user-nav-label">Browse Rentals</span>
+      </a>
+
+      <a href="{{ url_for('user.favorites') }}"
+         class="user-nav-item {% if current_endpoint == 'user.favorites' %}active{% endif %}"
+         data-tooltip="My Favorites">
+        <i class="bi bi-heart user-nav-icon"></i>
+        <span class="user-nav-label">
+          My Favorites
+          {% if fav_count is defined and fav_count > 0 %}
+            <span class="user-nav-badge">{{ fav_count }}</span>
+          {% endif %}
+        </span>
+      </a>
+
+      <a href="{{ url_for('user.messages') }}"
+         class="user-nav-item {% if current_endpoint == 'user.messages' %}active{% endif %}"
+         data-tooltip="Messages">
+        <i class="bi bi-chat-dots user-nav-icon"></i>
+        <span class="user-nav-label">
+          Messages
+          {% if unread_count is defined and unread_count > 0 %}
+            <span class="user-nav-badge">{{ unread_count }}</span>
+          {% endif %}
+        </span>
+      </a>
+
+      <a href="{{ url_for('user.roommate_profile') }}"
+         class="user-nav-item {% if current_endpoint == 'user.roommate_profile' %}active{% endif %}"
+         data-tooltip="Roommate Profile">
+        <i class="bi bi-people user-nav-icon"></i>
+        <span class="user-nav-label">Roommate Profile</span>
+      </a>
+
+      <a href="{{ url_for('user.my_bookings') }}"
+         class="user-nav-item {% if current_endpoint == 'user.my_bookings' %}active{% endif %}"
+         data-tooltip="My Bookings">
+        <i class="bi bi-calendar-check user-nav-icon"></i>
+        <span class="user-nav-label">My Bookings</span>
+      </a>
+
+      <a href="{{ url_for('user.profile') }}"
+         class="user-nav-item {% if current_endpoint == 'user.profile' %}active{% endif %}"
+         data-tooltip="My Profile">
+        <i class="bi bi-person-gear user-nav-icon"></i>
+        <span class="user-nav-label">My Profile</span>
+      </a>
+
+      <a href="{{ url_for('main.nearby') }}"
+         class="user-nav-item {% if current_endpoint == 'main.nearby' %}active{% endif %}"
+         data-tooltip="Near Me">
+        <i class="bi bi-geo-alt user-nav-icon"></i>
+        <span class="user-nav-label">Near Me</span>
+      </a>
+
+    </nav>
+
+    <!-- Sidebar footer: user info + logout -->
+    <div class="user-sidebar-footer">
+      <div class="sidebar-user-info">
+        <div class="sidebar-avatar">
+          {% if current_user.profile_image %}
+            <img src="{{ url_for('static', filename=current_user.profile_image) }}" alt="">
+          {% else %}
+            {{ current_user.full_name[0].upper() }}
+          {% endif %}
+        </div>
+        <div class="sidebar-user-text">
+          <span class="sidebar-user-name">{{ current_user.full_name }}</span>
+          <span class="sidebar-user-role">Tenant</span>
+        </div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="user-nav-item user-logout-btn" data-tooltip="Logout">
+        <i class="bi bi-box-arrow-right user-nav-icon"></i>
+        <span class="user-nav-label">Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <div class="user-main" id="userMain">
+
+    <!-- Top bar -->
+    <div class="user-topbar">
+      <button class="sidebar-toggle-btn" id="userSidebarToggle" title="Toggle sidebar">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <!-- Mobile overlay toggle -->
+      <button class="sidebar-mobile-btn d-lg-none" id="userSidebarMobileToggle" title="Menu">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <div class="user-breadcrumb">
+        <i class="bi bi-person-circle text-danger me-2"></i>
+        {% block user_breadcrumb %}Dashboard{% endblock %}
+      </div>
+
+      <div class="user-topbar-right">
+        <!-- Find Rental quick button -->
+        <a href="{{ url_for('main.listings') }}" class="btn btn-sm btn-danger d-none d-md-inline-flex align-items-center gap-1 rounded-pill px-3">
+          <i class="bi bi-search"></i>
+          <span>Find Rental</span>
+        </a>
+
+        <!-- Avatar dropdown -->
+        <div class="dropdown">
+          <button class="topbar-avatar-btn dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="topbar-avatar">
+              {% if current_user.profile_image %}
+                <img src="{{ url_for('static', filename=current_user.profile_image) }}" alt="">
+              {% else %}
+                {{ current_user.full_name[0].upper() }}
+              {% endif %}
+            </div>
+            <span class="d-none d-sm-inline topbar-user-name">{{ current_user.full_name.split()[0] }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 mt-1">
+            <li>
+              <div class="px-3 py-2 border-bottom">
+                <div class="fw-semibold small">{{ current_user.full_name }}</div>
+                <div class="text-muted" style="font-size:0.75rem;">{{ current_user.email }}</div>
+                <span class="badge bg-danger-subtle text-danger mt-1" style="font-size:0.65rem;">Tenant</span>
+              </div>
+            </li>
+            <li><a class="dropdown-item py-2" href="{{ url_for('user.dashboard') }}"><i class="bi bi-speedometer2 me-2 text-danger"></i>Dashboard</a></li>
+            <li><a class="dropdown-item py-2" href="{{ url_for('user.profile') }}"><i class="bi bi-person-gear me-2 text-muted"></i>My Profile</a></li>
+            <li><a class="dropdown-item py-2" href="{{ url_for('user.favorites') }}"><i class="bi bi-heart me-2 text-muted"></i>My Favorites</a></li>
+            <li><a class="dropdown-item py-2" href="{{ url_for('user.messages') }}"><i class="bi bi-chat-dots me-2 text-muted"></i>Messages</a></li>
+            <li><a class="dropdown-item py-2" href="{{ url_for('main.listings') }}"><i class="bi bi-search me-2 text-muted"></i>Browse Rentals</a></li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li><a class="dropdown-item py-2 text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="px-4 pt-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page content -->
+    <div class="user-content">
+      {% block user_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<!-- Mobile overlay backdrop -->
+<div class="sidebar-overlay" id="userOverlay"></div>
+
+<script>
+(function () {
+  const sidebar   = document.getElementById('userSidebar');
+  const layout    = document.getElementById('userLayout');
+  const toggleBtn = document.getElementById('userSidebarToggle');
+  const mobileBtn = document.getElementById('userSidebarMobileToggle');
+  const overlay   = document.getElementById('userOverlay');
+  const STORAGE_KEY = 'userSidebarCollapsed';
+
+  // ---- Desktop collapse/expand ----
+  function setCollapsed(collapsed) {
+    if (collapsed) {
+      sidebar.classList.add('collapsed');
+      layout.classList.add('sidebar-collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+      layout.classList.remove('sidebar-collapsed');
+    }
+    localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+  }
+
+  // Restore saved state on load
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === '1') {
+    setCollapsed(true);
+  }
+
+  toggleBtn && toggleBtn.addEventListener('click', function () {
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    setCollapsed(!isCollapsed);
+  });
+
+  // ---- Mobile slide-over ----
+  function openMobileSidebar() {
+    sidebar.classList.add('mobile-open');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMobileSidebar() {
+    sidebar.classList.remove('mobile-open');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  mobileBtn && mobileBtn.addEventListener('click', openMobileSidebar);
+  overlay && overlay.addEventListener('click', closeMobileSidebar);
+
+  // Close mobile sidebar on nav link click
+  document.querySelectorAll('.user-nav-item').forEach(function (link) {
+    link.addEventListener('click', function () {
+      if (window.innerWidth < 992) {
+        closeMobileSidebar();
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}
