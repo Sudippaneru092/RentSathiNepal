@@ -227,13 +227,13 @@
           <div class="prop-body">
             <div class="d-flex align-items-start justify-content-between gap-1">
               <div class="prop-title">{{ property.title }}</div>
-              {% set avg = property.average_rating() %}
+              {% set avg = rating_map.get(property.id, 0) %}
               {% if avg > 0 %}
                 <span class="prop-rating"><i class="bi bi-star-fill text-warning"></i> {{ avg }}</span>
               {% endif %}
             </div>
             <div class="prop-location">
-              <i class="bi bi-geo-alt-fill text-danger"></i>
+              <i class="bi bi-geo-alt-fill text-primary"></i>
               {{ property.area or '' }}{% if property.area and property.city %}, {% endif %}{{ property.city }}{% if property.district %}, {{ property.district }}{% endif %}
             </div>
             <div class="prop-meta">

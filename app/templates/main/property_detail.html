@@ -196,7 +196,11 @@
         <div>
           <div class="pd-owner-name">{{ owner.full_name }}</div>
           <div class="pd-owner-meta">
-            <i class="bi bi-shield-fill-check text-success me-1"></i>Verified Owner
+            {% if owner.owner_profile and owner.owner_profile.verification_status == 'verified' %}
+              <i class="bi bi-shield-fill-check text-success me-1"></i>Verified Owner
+            {% else %}
+              <i class="bi bi-person-circle text-muted me-1"></i>Owner
+            {% endif %}
             &nbsp;·&nbsp;
             Listed {{ property.created_at.strftime('%b %Y') }}
           </div>
@@ -236,6 +240,46 @@
             Show all {{ amenities|length }} amenities <i class="bi bi-chevron-down ms-1"></i>
           </button>
         {% endif %}
+      </div>
+      <hr class="pd-divider">
+      {% endif %}
+
+      <!-- ── AVAILABILITY ── -->
+      {% if vacancy_entries %}
+      <div class="pd-section">
+        <h2 class="pd-section-title">
+          <i class="bi bi-calendar2-check-fill text-success me-2" style="font-size:1.1rem;"></i>
+          Availability
+        </h2>
+        <p class="text-muted small mb-3">The owner has indicated the following available windows:</p>
+        <div class="vac-list">
+          {% for entry in vacancy_entries %}
+            <div class="vac-entry">
+              <div class="vac-dot"></div>
+              <div class="vac-body">
+                <span class="vac-from">
+                  <i class="bi bi-calendar-event me-1"></i>
+                  From <strong>{{ entry.available_from.strftime('%B %d, %Y') }}</strong>
+                </span>
+                {% if entry.available_until %}
+                  <span class="vac-sep">→</span>
+                  <span class="vac-until">
+                    Until <strong>{{ entry.available_until.strftime('%B %d, %Y') }}</strong>
+                  </span>
+                  {% set delta = (entry.available_until - entry.available_from).days %}
+                  <span class="vac-duration">{{ delta }} day{{ 's' if delta != 1 }}</span>
+                {% else %}
+                  <span class="vac-sep">→</span>
+                  <span class="vac-open">Open-ended</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <p class="vac-note">
+          <i class="bi bi-info-circle me-1"></i>
+          Exact move-in date is confirmed after a successful booking.
+        </p>
       </div>
       <hr class="pd-divider">
       {% endif %}
@@ -447,7 +491,11 @@
           <div>
             <div class="pd-card-owner-name">{{ owner.full_name }}</div>
             <div class="pd-card-owner-role">
-              <i class="bi bi-shield-fill-check text-success me-1" style="font-size:0.75rem;"></i>Verified Owner
+              {% if owner.owner_profile and owner.owner_profile.verification_status == 'verified' %}
+                <i class="bi bi-shield-fill-check text-success me-1" style="font-size:0.75rem;"></i>Verified Owner
+              {% else %}
+                <i class="bi bi-person-circle text-muted me-1" style="font-size:0.75rem;"></i>Owner
+              {% endif %}
             </div>
           </div>
         </div>
@@ -548,6 +596,20 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 {% endif %}
+
+<style>
+/* ── Vacancy / Availability ── */
+.vac-list   { display:flex; flex-direction:column; gap:.6rem; margin-bottom:1rem; }
+.vac-entry  { display:flex; align-items:flex-start; gap:.75rem; }
+.vac-dot    { width:10px; height:10px; border-radius:50%; background:#22c55e; flex-shrink:0; margin-top:5px; }
+.vac-body   { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .6rem; font-size:.88rem; }
+.vac-from   { color:#374151; }
+.vac-until  { color:#374151; }
+.vac-sep    { color:#9ca3af; font-size:.8rem; }
+.vac-open   { background:#f0fdf4; color:#15803d; border-radius:99px; padding:2px 10px; font-size:.78rem; font-weight:600; }
+.vac-duration { background:#f0fdf4; color:#15803d; border-radius:99px; padding:2px 10px; font-size:.75rem; font-weight:500; }
+.vac-note   { font-size:.78rem; color:#9ca3af; margin:0; }
+</style>
 
 <script>
 /* ── Image data for lightbox ── */

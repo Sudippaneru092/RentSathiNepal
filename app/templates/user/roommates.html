@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ── HERO ── -->
+<section class="rm-hero">
+  <div class="container">
+    <div class="rm-hero-inner">
+      <div class="rm-hero-badge"><i class="bi bi-people-fill me-2"></i>Roommate Finder</div>
+      <h1 class="rm-hero-title">Find Your Perfect<br><span class="rm-accent">Roommate in Nepal</span></h1>
+      <p class="rm-hero-sub">Connect with verified students and professionals looking to share accommodation across Nepal.</p>
+      <div class="rm-hero-stats">
+        <div class="rm-hero-stat">
+          <span class="rm-hero-num">{{ total_profiles }}</span>
+          <span class="rm-hero-label">Active Profiles</span>
+        </div>
+        <div class="rm-hero-stat-div"></div>
+        <div class="rm-hero-stat">
+          <span class="rm-hero-num">{{ cities|length }}</span>
+          <span class="rm-hero-label">Cities</span>
+        </div>
+        <div class="rm-hero-stat-div"></div>
+        <div class="rm-hero-stat">
+          <span class="rm-hero-num">Free</span>
+          <span class="rm-hero-label">Always</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SEARCH + FILTERS ── -->
+<section class="rm-search-section">
+  <div class="container">
+    <form method="GET" action="{{ url_for('user.roommates') }}" id="rmFilterForm">
+      <div class="rm-search-bar">
+        <!-- Keyword -->
+        <div class="rm-search-field rm-search-main">
+          <i class="bi bi-search rm-search-icon"></i>
+          <input type="text" name="q" class="rm-search-input"
+                 placeholder="Search by occupation, bio, lifestyle..."
+                 value="{{ keyword }}">
+        </div>
+        <!-- City -->
+        <div class="rm-search-field">
+          <i class="bi bi-geo-alt rm-search-icon"></i>
+          <select name="city" class="rm-search-select">
+            <option value="">Any City</option>
+            {% for c in cities %}
+              <option value="{{ c }}" {% if c == city %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Gender preference -->
+        <div class="rm-search-field">
+          <i class="bi bi-person rm-search-icon"></i>
+          <select name="gender" class="rm-search-select">
+            <option value="">Any Gender</option>
+            <option value="male"   {% if gender == 'male' %}selected{% endif %}>Male preferred</option>
+            <option value="female" {% if gender == 'female' %}selected{% endif %}>Female preferred</option>
+            <option value="any"    {% if gender == 'any' %}selected{% endif %}>No preference</option>
+          </select>
+        </div>
+        <!-- Max budget -->
+        <div class="rm-search-field">
+          <i class="bi bi-cash rm-search-icon"></i>
+          <input type="number" name="max_budget" class="rm-search-input"
+                 placeholder="Max budget (NPR)" value="{{ max_budget }}" min="0">
+        </div>
+        <button type="submit" class="rm-search-btn">
+          <i class="bi bi-search me-2"></i>Search
+        </button>
+      </div>
+
+      <!-- Active filter chips -->
+      {% set has_filters = keyword or city or gender or max_budget %}
+      {% if has_filters %}
+        <div class="rm-filter-chips mt-3">
+          {% if keyword %}
+            <span class="rm-chip">
+              "{{ keyword }}"
+              <a href="{{ url_for('user.roommates', city=city, gender=gender, max_budget=max_budget) }}" class="rm-chip-remove"><i class="bi bi-x"></i></a>
+            </span>
+          {% endif %}
+          {% if city %}
+            <span class="rm-chip">
+              <i class="bi bi-geo-alt me-1"></i>{{ city }}
+              <a href="{{ url_for('user.roommates', q=keyword, gender=gender, max_budget=max_budget) }}" class="rm-chip-remove"><i class="bi bi-x"></i></a>
+            </span>
+          {% endif %}
+          {% if gender %}
+            <span class="rm-chip">
+              {{ gender.capitalize() }} preferred
+              <a href="{{ url_for('user.roommates', q=keyword, city=city, max_budget=max_budget) }}" class="rm-chip-remove"><i class="bi bi-x"></i></a>
+            </span>
+          {% endif %}
+          {% if max_budget %}
+            <span class="rm-chip">
+              Max Rs.{{ "{:,.0f}".format(max_budget|float) }}
+              <a href="{{ url_for('user.roommates', q=keyword, city=city, gender=gender) }}" class="rm-chip-remove"><i class="bi bi-x"></i></a>
+            </span>
+          {% endif %}
+          <a href="{{ url_for('user.roommates') }}" class="rm-clear-all">Clear all</a>
+        </div>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+<!-- ── RESULTS ── -->
+<section class="rm-results-section">
+  <div class="container">
+
+    <div class="rm-results-header">
+      <p class="rm-results-count">
+        {% if profiles.total == 0 %}
+          No profiles found
+        {% elif profiles.total == 1 %}
+          1 profile found
+        {% else %}
+          {{ profiles.total }} profiles found
+        {% endif %}
+        {% if has_filters %}<span class="text-muted"> — matching your filters</span>{% endif %}
+      </p>
+      {% if current_user.is_authenticated and current_user.role == 'user' %}
+        <a href="{{ url_for('user.roommate_profile') }}" class="btn btn-danger btn-sm rounded-pill px-4">
+          <i class="bi bi-person-plus me-2"></i>
+          {% if current_user.roommate_profile %}Edit My Profile{% else %}Post My Profile{% endif %}
+        </a>
+      {% elif not current_user.is_authenticated %}
+        <a href="{{ url_for('auth.register') }}" class="btn btn-danger btn-sm rounded-pill px-4">
+          <i class="bi bi-person-plus me-2"></i>Post Your Profile
+        </a>
+      {% endif %}
+    </div>
+
+    {% if profiles.items %}
+      <div class="row g-4">
+        {% for rp in profiles.items %}
+          {% set owner = rp.user %}
+          <div class="col-md-6 col-lg-4">
+            <div class="rm-card">
+              <!-- Avatar + name -->
+              <div class="rm-card-top">
+                <div class="rm-avatar">
+                  {% if owner.profile_image %}
+                    <img src="{{ url_for('static', filename=owner.profile_image) }}" alt="{{ owner.full_name }}">
+                  {% else %}
+                    <span class="rm-avatar-initials">{{ owner.full_name[0].upper() }}</span>
+                  {% endif %}
+                </div>
+                <div class="rm-card-identity">
+                  <div class="rm-card-name">{{ owner.full_name }}</div>
+                  <div class="rm-card-meta">
+                    {% if rp.occupation %}
+                      <span><i class="bi bi-briefcase me-1"></i>{{ rp.occupation }}</span>
+                    {% endif %}
+                    {% if owner.city or rp.preferred_city %}
+                      <span><i class="bi bi-geo-alt me-1"></i>{{ owner.city or rp.preferred_city }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% if rp.preferred_city %}
+                  <span class="rm-card-city-badge">{{ rp.preferred_city }}</span>
+                {% endif %}
+              </div>
+
+              <!-- Preference pills -->
+              <div class="rm-prefs">
+                {% if rp.budget %}
+                  <span class="rm-pref rm-pref-green">
+                    <i class="bi bi-cash-coin"></i> Rs.{{ "{:,.0f}".format(rp.budget) }}/mo
+                  </span>
+                {% endif %}
+                {% if rp.gender_preference and rp.gender_preference != 'any' %}
+                  <span class="rm-pref rm-pref-blue">
+                    <i class="bi bi-person"></i> {{ rp.gender_preference.capitalize() }} roommate
+                  </span>
+                {% endif %}
+                {% if rp.smoking_preference %}
+                  <span class="rm-pref rm-pref-gray">
+                    {% if rp.smoking_preference == 'non-smoker' %}
+                      <i class="bi bi-x-circle"></i> No smoking
+                    {% elif rp.smoking_preference == 'smoker' %}
+                      <i class="bi bi-check-circle"></i> Smoker ok
+                    {% else %}
+                      <i class="bi bi-dash-circle"></i> Smoking ok
+                    {% endif %}
+                  </span>
+                {% endif %}
+                {% if rp.drinking_preference and rp.drinking_preference == 'non-drinker' %}
+                  <span class="rm-pref rm-pref-gray">
+                    <i class="bi bi-x-circle"></i> No drinking
+                  </span>
+                {% endif %}
+              </div>
+
+              <!-- Bio -->
+              {% if rp.bio %}
+                <p class="rm-card-bio">{{ rp.bio[:120] }}{% if rp.bio|length > 120 %}…{% endif %}</p>
+              {% elif rp.lifestyle %}
+                <p class="rm-card-bio">{{ rp.lifestyle[:120] }}{% if rp.lifestyle|length > 120 %}…{% endif %}</p>
+              {% endif %}
+
+              <!-- Footer -->
+              <div class="rm-card-footer">
+                <span class="rm-card-joined">
+                  <i class="bi bi-clock me-1"></i>Joined {{ rp.created_at.strftime('%b %Y') }}
+                </span>
+                <a href="{{ url_for('user.roommate_view', profile_id=rp.id) }}"
+                   class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                  View Profile
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if profiles.pages > 1 %}
+        <nav class="mt-5 d-flex justify-content-center">
+          <ul class="pagination gap-1">
+            <li class="page-item {% if not profiles.has_prev %}disabled{% endif %}">
+              <a class="page-link rounded-3" href="{{ url_for('user.roommates', page=profiles.prev_num, **search_params) }}">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% for num in profiles.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if num %}
+                <li class="page-item {% if num == profiles.page %}active{% endif %}">
+                  <a class="page-link rounded-3" href="{{ url_for('user.roommates', page=num, **search_params) }}">{{ num }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-3">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not profiles.has_next %}disabled{% endif %}">
+              <a class="page-link rounded-3" href="{{ url_for('user.roommates', page=profiles.next_num, **search_params) }}">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      {% endif %}
+
+    {% else %}
+      <!-- Empty state -->
+      <div class="rm-empty">
+        <div class="rm-empty-icon"><i class="bi bi-people"></i></div>
+        <h4 class="fw-bold mb-2">No profiles found</h4>
+        <p class="text-muted mb-4">
+          {% if has_filters %}
+            Try adjusting your filters — no one matches those criteria yet.
+          {% else %}
+            Be the first to post a roommate profile!
+          {% endif %}
+        </p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+          {% if has_filters %}
+            <a href="{{ url_for('user.roommates') }}" class="btn btn-outline-secondary rounded-pill px-4">
+              <i class="bi bi-x me-2"></i>Clear Filters
+            </a>
+          {% endif %}
+          {% if current_user.is_authenticated and current_user.role == 'user' %}
+            <a href="{{ url_for('user.roommate_profile') }}" class="btn btn-danger rounded-pill px-4">
+              <i class="bi bi-person-plus me-2"></i>Post My Profile
+            </a>
+          {% else %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-danger rounded-pill px-4">
+              <i class="bi bi-person-plus me-2"></i>Get Started
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* ── Hero ── */
+.rm-hero { background: linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%); padding: 72px 0 56px; }
+.rm-hero-inner { max-width: 640px; }
+.rm-hero-badge { display:inline-flex; align-items:center; background:rgba(255,255,255,.15); color:#c4b5fd; border-radius:99px; padding:6px 16px; font-size:.82rem; font-weight:600; margin-bottom:1rem; }
+.rm-hero-title { font-size:clamp(2rem,5vw,3rem); font-weight:800; color:#fff; line-height:1.15; margin-bottom:.75rem; }
+.rm-accent     { color:#a78bfa; }
+.rm-hero-sub   { color:rgba(255,255,255,.75); font-size:1.05rem; margin-bottom:2rem; }
+.rm-hero-stats { display:flex; align-items:center; gap:1.5rem; }
+.rm-hero-stat  { text-align:center; }
+.rm-hero-num   { display:block; font-size:1.6rem; font-weight:800; color:#fff; line-height:1; }
+.rm-hero-label { font-size:.75rem; color:rgba(255,255,255,.6); }
+.rm-hero-stat-div { width:1px; height:32px; background:rgba(255,255,255,.2); }
+
+/* ── Search bar ── */
+.rm-search-section { background:#f8fafc; padding:28px 0; border-bottom:1px solid #e5e7eb; }
+.rm-search-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.rm-search-field { position:relative; flex:1; min-width:180px; }
+.rm-search-main  { flex:2; min-width:260px; }
+.rm-search-icon  { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; pointer-events:none; }
+.rm-search-input,.rm-search-select {
+  width:100%; padding:10px 12px 10px 36px;
+  border:1.5px solid #e5e7eb; border-radius:10px;
+  background:#fff; font-size:.92rem; color:#111;
+  transition:border .2s;
+}
+.rm-search-input:focus,.rm-search-select:focus { border-color:#8b5cf6; outline:none; box-shadow:0 0 0 3px rgba(139,92,246,.1); }
+.rm-search-btn {
+  padding:10px 24px; background:#8b5cf6; color:#fff;
+  border:none; border-radius:10px; font-weight:600;
+  cursor:pointer; white-space:nowrap; transition:background .2s;
+}
+.rm-search-btn:hover { background:#7c3aed; }
+
+/* Filter chips */
+.rm-filter-chips { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.rm-chip { display:inline-flex; align-items:center; gap:.35rem; background:#ede9fe; color:#5b21b6; border-radius:99px; padding:4px 12px; font-size:.82rem; font-weight:500; }
+.rm-chip-remove { color:#7c3aed; text-decoration:none; display:flex; align-items:center; }
+.rm-chip-remove:hover { color:#4c1d95; }
+.rm-clear-all { font-size:.82rem; color:#6b7280; text-decoration:underline; cursor:pointer; }
+
+/* ── Results ── */
+.rm-results-section { padding:40px 0 60px; }
+.rm-results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.75rem; }
+.rm-results-count { margin:0; font-weight:500; color:#374151; }
+
+/* ── Cards ── */
+.rm-card {
+  background:#fff; border-radius:16px; padding:1.5rem;
+  border:1.5px solid #f3f4f6;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  transition:transform .2s, box-shadow .2s;
+  height:100%; display:flex; flex-direction:column; gap:.9rem;
+}
+.rm-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.1); }
+
+.rm-card-top { display:flex; align-items:flex-start; gap:.85rem; }
+.rm-avatar { width:52px; height:52px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#ede9fe; display:flex; align-items:center; justify-content:center; }
+.rm-avatar img { width:100%; height:100%; object-fit:cover; }
+.rm-avatar-initials { font-size:1.3rem; font-weight:700; color:#7c3aed; }
+.rm-card-identity { flex:1; min-width:0; }
+.rm-card-name { font-weight:700; font-size:.95rem; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rm-card-meta { display:flex; flex-wrap:wrap; gap:.3rem .75rem; margin-top:.25rem; font-size:.78rem; color:#6b7280; }
+.rm-card-city-badge { flex-shrink:0; background:#ede9fe; color:#5b21b6; border-radius:99px; padding:2px 10px; font-size:.75rem; font-weight:600; white-space:nowrap; align-self:flex-start; margin-top:2px; }
+
+/* Preference pills */
+.rm-prefs { display:flex; flex-wrap:wrap; gap:.4rem; }
+.rm-pref { display:inline-flex; align-items:center; gap:.3rem; border-radius:99px; padding:3px 10px; font-size:.75rem; font-weight:500; }
+.rm-pref-green { background:#f0fdf4; color:#15803d; }
+.rm-pref-blue  { background:#eff6ff; color:#1d4ed8; }
+.rm-pref-gray  { background:#f3f4f6; color:#4b5563; }
+
+.rm-card-bio { flex:1; font-size:.85rem; color:#4b5563; line-height:1.6; margin:0; }
+
+.rm-card-footer { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-top:auto; padding-top:.75rem; border-top:1px solid #f3f4f6; }
+.rm-card-joined { font-size:.78rem; color:#9ca3af; }
+
+/* Empty state */
+.rm-empty { text-align:center; padding:80px 20px; }
+.rm-empty-icon { font-size:4rem; color:#d1d5db; margin-bottom:1rem; }
+</style>
+{% endblock %}

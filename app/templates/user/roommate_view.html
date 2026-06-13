@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- ── Breadcrumb ── -->
+<div class="pd-breadcrumb">
+  <div class="container">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span class="sep"><i class="bi bi-chevron-right"></i></span>
+    <a href="{{ url_for('user.roommates') }}">Roommate Finder</a>
+    <span class="sep"><i class="bi bi-chevron-right"></i></span>
+    <span>{{ owner.full_name }}</span>
+  </div>
+</div>
+
+<div class="container" style="max-width:860px; padding:40px 16px 80px;">
+
+  <div class="rmv-layout">
+
+    <!-- ══ LEFT — Profile Card ══ -->
+    <div class="rmv-sidebar">
+      <div class="rmv-profile-card">
+        <!-- Avatar -->
+        <div class="rmv-avatar-wrap">
+          {% if owner.profile_image %}
+            <img src="{{ url_for('static', filename=owner.profile_image) }}"
+                 alt="{{ owner.full_name }}" class="rmv-avatar">
+          {% else %}
+            <div class="rmv-avatar rmv-avatar-fallback">
+              {{ owner.full_name[0].upper() }}
+            </div>
+          {% endif %}
+        </div>
+
+        <h2 class="rmv-name">{{ owner.full_name }}</h2>
+
+        {% if rp.occupation %}
+          <p class="rmv-occupation">
+            <i class="bi bi-briefcase-fill me-2 text-muted"></i>{{ rp.occupation }}
+          </p>
+        {% endif %}
+
+        {% if rp.preferred_city %}
+          <p class="rmv-location">
+            <i class="bi bi-geo-alt-fill text-danger me-2"></i>Looking in {{ rp.preferred_city }}
+          </p>
+        {% endif %}
+
+        <div class="rmv-joined">
+          <i class="bi bi-calendar3 me-1"></i>
+          Member since {{ owner.created_at.strftime('%B %Y') }}
+        </div>
+
+        <!-- Contact button -->
+        {% if current_user.is_authenticated and current_user.id != owner.id and current_user.role == 'user' %}
+          <a href="{{ url_for('user.messages') }}" class="rmv-contact-btn">
+            <i class="bi bi-chat-dots me-2"></i>Send Message
+          </a>
+          <p class="rmv-contact-note">
+            Go to your Messages and start a conversation.
+          </p>
+        {% elif not current_user.is_authenticated %}
+          <a href="{{ url_for('auth.login') }}" class="rmv-contact-btn">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Sign in to Contact
+          </a>
+        {% elif current_user.id == owner.id %}
+          <a href="{{ url_for('user.roommate_profile') }}" class="rmv-contact-btn rmv-edit-btn">
+            <i class="bi bi-pencil me-2"></i>Edit My Profile
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ══ RIGHT — Details ══ -->
+    <div class="rmv-main">
+
+      <!-- Budget & preferences quick-stats -->
+      <div class="rmv-stats-row">
+        {% if rp.budget %}
+          <div class="rmv-stat-box">
+            <div class="rmv-stat-icon" style="background:#f0fdf4;color:#16a34a;">
+              <i class="bi bi-cash-coin"></i>
+            </div>
+            <div>
+              <div class="rmv-stat-val">Rs. {{ "{:,.0f}".format(rp.budget) }}</div>
+              <div class="rmv-stat-lbl">Monthly Budget</div>
+            </div>
+          </div>
+        {% endif %}
+        {% if rp.gender_preference %}
+          <div class="rmv-stat-box">
+            <div class="rmv-stat-icon" style="background:#eff6ff;color:#1d4ed8;">
+              <i class="bi bi-person"></i>
+            </div>
+            <div>
+              <div class="rmv-stat-val">{{ rp.gender_preference.capitalize() if rp.gender_preference != 'any' else 'No preference' }}</div>
+              <div class="rmv-stat-lbl">Gender Preference</div>
+            </div>
+          </div>
+        {% endif %}
+        {% if rp.smoking_preference %}
+          <div class="rmv-stat-box">
+            <div class="rmv-stat-icon" style="background:#fef9ec;color:#92400e;">
+              <i class="bi bi-wind"></i>
+            </div>
+            <div>
+              <div class="rmv-stat-val">
+                {% if rp.smoking_preference == 'non-smoker' %}Non-smoker
+                {% elif rp.smoking_preference == 'smoker' %}Smoker
+                {% else %}Okay with smoking{% endif %}
+              </div>
+              <div class="rmv-stat-lbl">Smoking</div>
+            </div>
+          </div>
+        {% endif %}
+        {% if rp.drinking_preference %}
+          <div class="rmv-stat-box">
+            <div class="rmv-stat-icon" style="background:#fdf4ff;color:#7e22ce;">
+              <i class="bi bi-cup-straw"></i>
+            </div>
+            <div>
+              <div class="rmv-stat-val">
+                {% if rp.drinking_preference == 'non-drinker' %}Non-drinker
+                {% elif rp.drinking_preference == 'drinker' %}Drinker
+                {% else %}Social drinker{% endif %}
+              </div>
+              <div class="rmv-stat-lbl">Drinking</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- About / Bio -->
+      {% if rp.bio %}
+        <div class="rmv-section">
+          <h3 class="rmv-section-title">About Me</h3>
+          <p class="rmv-section-body">{{ rp.bio }}</p>
+        </div>
+      {% endif %}
+
+      <!-- Lifestyle -->
+      {% if rp.lifestyle %}
+        <div class="rmv-section">
+          <h3 class="rmv-section-title">Lifestyle</h3>
+          <p class="rmv-section-body">{{ rp.lifestyle }}</p>
+        </div>
+      {% endif %}
+
+      <!-- Looking for -->
+      <div class="rmv-section">
+        <h3 class="rmv-section-title">Looking For</h3>
+        <div class="rmv-looking-list">
+          {% if rp.preferred_city %}
+            <div class="rmv-looking-item">
+              <i class="bi bi-geo-alt-fill text-danger"></i>
+              <span>Accommodation in <strong>{{ rp.preferred_city }}</strong></span>
+            </div>
+          {% endif %}
+          {% if rp.budget %}
+            <div class="rmv-looking-item">
+              <i class="bi bi-cash-coin text-success"></i>
+              <span>Budget up to <strong>Rs. {{ "{:,.0f}".format(rp.budget) }}/month</strong></span>
+            </div>
+          {% endif %}
+          {% if rp.gender_preference and rp.gender_preference != 'any' %}
+            <div class="rmv-looking-item">
+              <i class="bi bi-people text-primary"></i>
+              <span>Prefers <strong>{{ rp.gender_preference }}</strong> roommate</span>
+            </div>
+          {% endif %}
+          {% if not rp.preferred_city and not rp.budget and not rp.gender_preference %}
+            <p class="text-muted">No specific preferences listed.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Back link -->
+      <a href="{{ url_for('user.roommates') }}" class="rmv-back-link">
+        <i class="bi bi-arrow-left me-2"></i>Back to all roommates
+      </a>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.rmv-layout { display:grid; grid-template-columns:280px 1fr; gap:2rem; align-items:start; }
+@media(max-width:768px){ .rmv-layout { grid-template-columns:1fr; } }
+
+/* Sidebar card */
+.rmv-profile-card { background:#fff; border-radius:20px; padding:2rem 1.5rem; border:1.5px solid #f3f4f6; box-shadow:0 4px 20px rgba(0,0,0,.07); text-align:center; position:sticky; top:24px; }
+.rmv-avatar-wrap { margin-bottom:1rem; }
+.rmv-avatar { width:96px; height:96px; border-radius:50%; object-fit:cover; display:block; margin:0 auto; }
+.rmv-avatar-fallback { background:#ede9fe; display:flex; align-items:center; justify-content:center; font-size:2.5rem; font-weight:800; color:#7c3aed; }
+.rmv-name { font-size:1.2rem; font-weight:800; color:#111; margin-bottom:.3rem; }
+.rmv-occupation, .rmv-location { font-size:.88rem; color:#6b7280; margin-bottom:.3rem; }
+.rmv-joined { font-size:.78rem; color:#9ca3af; margin-bottom:1.25rem; }
+.rmv-contact-btn { display:block; width:100%; padding:12px; background:#e11d48; color:#fff; border-radius:10px; text-decoration:none; font-weight:700; font-size:.9rem; transition:background .2s; }
+.rmv-contact-btn:hover { background:#be123c; color:#fff; }
+.rmv-edit-btn { background:#8b5cf6; }
+.rmv-edit-btn:hover { background:#7c3aed; }
+.rmv-contact-note { font-size:.75rem; color:#9ca3af; margin-top:.5rem; margin-bottom:0; }
+
+/* Stats row */
+.rmv-stats-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.rmv-stat-box { display:flex; align-items:center; gap:.75rem; background:#fff; border:1.5px solid #f3f4f6; border-radius:12px; padding:.9rem 1rem; }
+.rmv-stat-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.rmv-stat-val { font-size:.88rem; font-weight:700; color:#111; }
+.rmv-stat-lbl { font-size:.72rem; color:#9ca3af; }
+
+/* Sections */
+.rmv-section { background:#fff; border:1.5px solid #f3f4f6; border-radius:14px; padding:1.25rem 1.5rem; margin-bottom:1rem; }
+.rmv-section-title { font-size:1rem; font-weight:700; color:#111; margin-bottom:.6rem; }
+.rmv-section-body { color:#4b5563; line-height:1.75; margin:0; font-size:.92rem; }
+
+/* Looking for */
+.rmv-looking-list { display:flex; flex-direction:column; gap:.6rem; }
+.rmv-looking-item { display:flex; align-items:center; gap:.6rem; font-size:.9rem; color:#374151; }
+
+.rmv-back-link { display:inline-flex; align-items:center; color:#6b7280; text-decoration:none; font-size:.88rem; margin-top:.5rem; }
+.rmv-back-link:hover { color:#e11d48; }
+</style>
+{% endblock %}

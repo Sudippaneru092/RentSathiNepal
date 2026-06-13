@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Leaflet CSS — loaded early so tiles don't flash -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<div class="mv-wrap">
+
+  <!-- ══════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════ -->
+  <aside class="mv-sidebar" id="mvSidebar">
+
+    <!-- Header -->
+    <div class="mv-sidebar-header">
+      <div class="mv-sidebar-title">
+        <i class="bi bi-map-fill text-danger me-2"></i>
+        <span>Map View</span>
+        <span class="mv-count-badge" id="mvCount">{{ total }}</span>
+      </div>
+      <button class="mv-sidebar-collapse" id="mvCollapseBtn" title="Collapse sidebar">
+        <i class="bi bi-chevron-left" id="mvCollapseIcon"></i>
+      </button>
+    </div>
+
+    <!-- Search + filters -->
+    <div class="mv-filters" id="mvFilters">
+      <div class="mv-search-wrap">
+        <i class="bi bi-search mv-search-icon"></i>
+        <input type="text" id="mvSearch" class="mv-search-input"
+               placeholder="Search city or property…" autocomplete="off">
+        <button class="mv-search-clear" id="mvSearchClear" style="display:none;">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+
+      <div class="mv-filter-row">
+        <!-- Property type -->
+        <select id="mvType" class="mv-select">
+          <option value="">All Types</option>
+          {% for t in ['room','flat','house','apartment','shutter','hostel'] %}
+            <option value="{{ t }}">{{ t.capitalize() }}</option>
+          {% endfor %}
+        </select>
+        <!-- Max price -->
+        <input type="number" id="mvMaxPrice" class="mv-price-input"
+               placeholder="Max price" min="0" step="500">
+      </div>
+
+      <!-- Location button -->
+      <button class="mv-locate-btn" id="mvLocateBtn">
+        <i class="bi bi-cursor-fill me-2"></i>Use My Location
+      </button>
+    </div>
+
+    <!-- Property list -->
+    <div class="mv-list" id="mvList">
+      <!-- Populated by JS -->
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════════════════
+       MAP
+  ══════════════════════════════════ -->
+  <div class="mv-map-wrap">
+    <div id="mvMap"></div>
+
+    <!-- Floating controls -->
+    <div class="mv-fab-group">
+      <button class="mv-fab" id="mvRecenter" title="Re-center to Nepal">
+        <i class="bi bi-house-fill"></i>
+      </button>
+      <button class="mv-fab" id="mvFitAll" title="Fit all markers">
+        <i class="bi bi-fullscreen"></i>
+      </button>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="mv-loading" id="mvLoading">
+      <div class="mv-spinner"></div>
+      <span>Loading properties…</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Property detail popup template (hidden, cloned by JS) -->
+<template id="popupTpl">
+  <div class="mv-popup">
+    <div class="mv-popup-img-wrap">
+      <img class="mv-popup-img" src="" alt="">
+      <div class="mv-popup-img-placeholder"><i class="bi bi-house"></i></div>
+      <span class="mv-popup-type-badge"></span>
+      <span class="mv-popup-verified" style="display:none;">
+        <i class="bi bi-patch-check-fill"></i> Verified
+      </span>
+    </div>
+    <div class="mv-popup-body">
+      <div class="mv-popup-title"></div>
+      <div class="mv-popup-location"></div>
+      <div class="mv-popup-meta"></div>
+      <div class="mv-popup-price-row">
+        <span class="mv-popup-price"></span>
+        <a class="mv-popup-link btn btn-sm btn-danger rounded-pill" href="#">View Details</a>
+      </div>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA — injected from Flask
+═══════════════════════════════════════════════════════ */
+const ALL_PROPS = {{ props_json | safe }};
+
+/* ═══════════════════════════════════════════════════════
+   MAP INIT
+═══════════════════════════════════════════════════════ */
+// Default center: Nepal
+const NEPAL_CENTER = [28.3949, 84.1240];
+const map = L.map('mvMap', { zoomControl: false }).setView(NEPAL_CENTER, 7);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19,
+}).addTo(map);
+
+// Move zoom controls to top-right
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+/* ═══════════════════════════════════════════════════════
+   MARKER FACTORY
+═══════════════════════════════════════════════════════ */
+function makePropIcon(highlighted) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="mv-marker ${highlighted ? 'mv-marker-hl' : ''}">
+             <i class="bi bi-house-fill"></i>
+           </div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 34],
+    popupAnchor: [0, -36],
+  });
+}
+
+function makeUserIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div class="mv-user-marker"><div class="mv-user-pulse"></div></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   POPUP BUILDER
+═══════════════════════════════════════════════════════ */
+function buildPopup(p) {
+  const tpl   = document.getElementById('popupTpl').content.cloneNode(true);
+  const el    = tpl.querySelector('.mv-popup');
+
+  const imgEl  = el.querySelector('.mv-popup-img');
+  const phEl   = el.querySelector('.mv-popup-img-placeholder');
+  if (p.image) {
+    imgEl.src = p.image;
+    imgEl.style.display = 'block';
+    phEl.style.display  = 'none';
+    imgEl.onerror = () => { imgEl.style.display = 'none'; phEl.style.display = 'flex'; };
+  } else {
+    imgEl.style.display = 'none';
+    phEl.style.display  = 'flex';
+  }
+
+  el.querySelector('.mv-popup-type-badge').textContent = p.type.charAt(0).toUpperCase() + p.type.slice(1);
+  if (p.verified) el.querySelector('.mv-popup-verified').style.display = 'flex';
+
+  el.querySelector('.mv-popup-title').textContent    = p.title;
+  el.querySelector('.mv-popup-location').innerHTML  = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${p.city}`;
+  el.querySelector('.mv-popup-meta').innerHTML      =
+    `<i class="bi bi-door-open me-1"></i>${p.bedrooms} Bed &nbsp;·&nbsp; <i class="bi bi-droplet me-1"></i>${p.bathrooms} Bath`;
+  el.querySelector('.mv-popup-price').textContent   = `Rs. ${p.price.toLocaleString()}/mo`;
+  el.querySelector('.mv-popup-link').href           = p.url;
+
+  // Wrap in a real div (L.popup content needs a Node)
+  const wrapper = document.createElement('div');
+  wrapper.appendChild(tpl);
+  return wrapper;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MARKER LAYER
+═══════════════════════════════════════════════════════ */
+let markersMap = {};   // id → { marker, data }
+let activeId   = null;
+
+function clearMarkers() {
+  Object.values(markersMap).forEach(({ marker }) => map.removeLayer(marker));
+  markersMap = {};
+}
+
+function addMarkers(props) {
+  clearMarkers();
+  if (!props.length) return;
+
+  const bounds = [];
+  props.forEach(p => {
+    const marker = L.marker([p.lat, p.lng], { icon: makePropIcon(false) }).addTo(map);
+    marker.bindPopup(buildPopup(p), {
+      maxWidth: 260,
+      className: 'mv-popup-container',
+    });
+
+    marker.on('click', () => highlightCard(p.id));
+    markersMap[p.id] = { marker, data: p };
+    bounds.push([p.lat, p.lng]);
+  });
+
+  // Fit bounds if multiple markers
+  if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  } else if (bounds.length === 1) {
+    map.setView(bounds[0], 14);
+  }
+
+  document.getElementById('mvCount').textContent = props.length;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR CARD LIST
+═══════════════════════════════════════════════════════ */
+function renderList(props) {
+  const list = document.getElementById('mvList');
+  list.innerHTML = '';
+
+  if (!props.length) {
+    list.innerHTML = `
+      <div class="mv-list-empty">
+        <i class="bi bi-house-x"></i>
+        <p>No properties found.<br>Try adjusting your filters.</p>
+      </div>`;
+    return;
+  }
+
+  props.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'mv-list-card';
+    card.dataset.id = p.id;
+    card.innerHTML = `
+      <div class="mv-lc-img">
+        ${p.image
+          ? `<img src="${p.image}" alt="${p.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+             <div class="mv-lc-ph" style="display:none"><i class="bi bi-house"></i></div>`
+          : `<div class="mv-lc-ph"><i class="bi bi-house"></i></div>`}
+        <span class="mv-lc-type">${p.type.charAt(0).toUpperCase() + p.type.slice(1)}</span>
+        ${p.verified ? '<span class="mv-lc-verified"><i class="bi bi-patch-check-fill"></i></span>' : ''}
+      </div>
+      <div class="mv-lc-body">
+        <div class="mv-lc-title">${p.title}</div>
+        <div class="mv-lc-city"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${p.city}</div>
+        <div class="mv-lc-meta">
+          <span><i class="bi bi-door-open"></i> ${p.bedrooms}</span>
+          <span><i class="bi bi-droplet"></i> ${p.bathrooms}</span>
+        </div>
+        <div class="mv-lc-footer">
+          <span class="mv-lc-price">Rs. ${p.price.toLocaleString()}<small>/mo</small></span>
+          <a href="${p.url}" class="mv-lc-link">View</a>
+        </div>
+      </div>`;
+
+    card.addEventListener('click', (e) => {
+      if (e.target.tagName === 'A') return;
+      const m = markersMap[p.id];
+      if (m) {
+        map.setView([p.lat, p.lng], 15, { animate: true });
+        m.marker.openPopup();
+      }
+      highlightCard(p.id);
+    });
+
+    list.appendChild(card);
+  });
+}
+
+function highlightCard(id) {
+  // Sidebar
+  document.querySelectorAll('.mv-list-card').forEach(c => c.classList.remove('active'));
+  const card = document.querySelector(`.mv-list-card[data-id="${id}"]`);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  // Marker icons
+  if (activeId && markersMap[activeId]) {
+    markersMap[activeId].marker.setIcon(makePropIcon(false));
+  }
+  if (markersMap[id]) {
+    markersMap[id].marker.setIcon(makePropIcon(true));
+  }
+  activeId = id;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FILTER LOGIC
+═══════════════════════════════════════════════════════ */
+function getFiltered() {
+  const q        = document.getElementById('mvSearch').value.trim().toLowerCase();
+  const type     = document.getElementById('mvType').value;
+  const maxPrice = parseFloat(document.getElementById('mvMaxPrice').value) || Infinity;
+
+  return ALL_PROPS.filter(p => {
+    if (type && p.type !== type) return false;
+    if (p.price > maxPrice) return false;
+    if (q) {
+      const haystack = `${p.title} ${p.city}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function applyFilters() {
+  const filtered = getFiltered();
+  addMarkers(filtered);
+  renderList(filtered);
+}
+
+// Wire filter controls
+['mvSearch','mvType','mvMaxPrice'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', applyFilters);
+});
+
+// Search clear button
+const searchInput = document.getElementById('mvSearch');
+const clearBtn    = document.getElementById('mvSearchClear');
+searchInput?.addEventListener('input', function () {
+  clearBtn.style.display = this.value ? 'flex' : 'none';
+});
+clearBtn?.addEventListener('click', () => {
+  searchInput.value = '';
+  clearBtn.style.display = 'none';
+  applyFilters();
+  searchInput.focus();
+});
+
+/* ═══════════════════════════════════════════════════════
+   LOCATION (optional)
+═══════════════════════════════════════════════════════ */
+let userMarker = null;
+
+document.getElementById('mvLocateBtn')?.addEventListener('click', function () {
+  const btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i>Locating…';
+
+  if (!navigator.geolocation) {
+    alert('Geolocation not supported by your browser.');
+    reset(); return;
+  }
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    if (userMarker) map.removeLayer(userMarker);
+    userMarker = L.marker([lat, lng], { icon: makeUserIcon() })
+      .addTo(map)
+      .bindPopup('<b>📍 Your Location</b>')
+      .openPopup();
+
+    // Draw 5 km radius circle
+    L.circle([lat, lng], {
+      radius: 5000,
+      color: '#e11d48',
+      fillColor: '#e11d48',
+      fillOpacity: 0.06,
+      weight: 1.5,
+    }).addTo(map);
+
+    map.setView([lat, lng], 13, { animate: true });
+    btn.innerHTML = '<i class="bi bi-cursor-fill me-2"></i>Location Set';
+    btn.style.background = '#16a34a';
+  }, err => {
+    const msgs = { 1:'Location denied.', 2:'Location unavailable.', 3:'Request timed out.' };
+    alert(msgs[err.code] || 'Could not get location.');
+    reset();
+  }, { enableHighAccuracy: true, timeout: 10000 });
+
+  function reset() {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cursor-fill me-2"></i>Use My Location';
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   FAB CONTROLS
+═══════════════════════════════════════════════════════ */
+document.getElementById('mvRecenter')?.addEventListener('click', () => {
+  map.setView(NEPAL_CENTER, 7, { animate: true });
+});
+
+document.getElementById('mvFitAll')?.addEventListener('click', () => {
+  const filtered = getFiltered();
+  if (!filtered.length) return;
+  const bounds = filtered.map(p => [p.lat, p.lng]);
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+});
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR COLLAPSE
+═══════════════════════════════════════════════════════ */
+document.getElementById('mvCollapseBtn')?.addEventListener('click', () => {
+  const sidebar = document.getElementById('mvSidebar');
+  const icon    = document.getElementById('mvCollapseIcon');
+  sidebar.classList.toggle('collapsed');
+  icon.classList.toggle('bi-chevron-left');
+  icon.classList.toggle('bi-chevron-right');
+  // Let Leaflet know the map size changed
+  setTimeout(() => map.invalidateSize(), 300);
+});
+
+/* ═══════════════════════════════════════════════════════
+   INITIAL RENDER
+═══════════════════════════════════════════════════════ */
+document.getElementById('mvLoading').style.display = 'flex';
+// Small delay so map tiles start loading first
+setTimeout(() => {
+  applyFilters();
+  document.getElementById('mvLoading').style.display = 'none';
+}, 300);
+</script>
+
+<style>
+/* ── Layout ── */
+html, body { height: 100%; }
+.mv-wrap {
+  display: flex;
+  height: calc(100vh - 64px);   /* subtract navbar height */
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.mv-sidebar {
+  width: 360px;
+  min-width: 360px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  transition: width .3s, min-width .3s;
+  z-index: 10;
+}
+.mv-sidebar.collapsed {
+  width: 52px;
+  min-width: 52px;
+}
+.mv-sidebar.collapsed .mv-filters,
+.mv-sidebar.collapsed .mv-list,
+.mv-sidebar.collapsed .mv-sidebar-title span,
+.mv-sidebar.collapsed .mv-count-badge { display: none; }
+
+.mv-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+.mv-sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: .95rem;
+  color: #111;
+  white-space: nowrap;
+}
+.mv-count-badge {
+  background: #e11d48;
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  min-width: 22px;
+  text-align: center;
+}
+.mv-sidebar-collapse {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.mv-sidebar-collapse:hover { background: #e5e7eb; }
+
+/* Filters */
+.mv-filters {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mv-search-wrap { position: relative; }
+.mv-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: .85rem; }
+.mv-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #9ca3af; cursor: pointer; display: flex; align-items: center; padding: 2px; }
+.mv-search-clear:hover { color: #e11d48; }
+.mv-search-input {
+  width: 100%;
+  padding: 8px 30px 8px 30px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: .85rem;
+  transition: border .2s;
+}
+.mv-search-input:focus { border-color: #e11d48; outline: none; }
+.mv-filter-row { display: flex; gap: 8px; }
+.mv-select, .mv-price-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: .82rem;
+  background: #fff;
+  transition: border .2s;
+}
+.mv-select:focus, .mv-price-input:focus { border-color: #e11d48; outline: none; }
+.mv-locate-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background .2s;
+}
+.mv-locate-btn:hover { background: #e5e7eb; }
+
+/* List */
+.mv-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.mv-list-empty { text-align: center; padding: 48px 20px; color: #9ca3af; }
+.mv-list-empty i { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+.mv-list-empty p { font-size: .85rem; line-height: 1.6; margin: 0; }
+
+/* List cards */
+.mv-list-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f9fafb;
+  transition: background .15s;
+}
+.mv-list-card:hover { background: #fef2f2; }
+.mv-list-card.active { background: #fff1f2; border-left: 3px solid #e11d48; }
+
+.mv-lc-img { position: relative; width: 80px; height: 70px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: #f3f4f6; }
+.mv-lc-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mv-lc-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #d1d5db; font-size: 1.5rem; }
+.mv-lc-type { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,.55); color: #fff; font-size: .62rem; font-weight: 600; padding: 1px 5px; border-radius: 4px; }
+.mv-lc-verified { position: absolute; top: 4px; right: 4px; color: #22c55e; font-size: .75rem; background: #fff; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
+
+.mv-lc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
+.mv-lc-title { font-size: .83rem; font-weight: 700; color: #111; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-lc-city { font-size: .75rem; color: #6b7280; margin-top: 2px; }
+.mv-lc-meta { font-size: .72rem; color: #9ca3af; display: flex; gap: 8px; margin-top: 3px; }
+.mv-lc-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.mv-lc-price { font-size: .82rem; font-weight: 700; color: #e11d48; }
+.mv-lc-price small { font-size: .68rem; font-weight: 400; color: #9ca3af; }
+.mv-lc-link { font-size: .72rem; font-weight: 600; color: #e11d48; text-decoration: none; border: 1px solid #fecdd3; border-radius: 99px; padding: 2px 10px; }
+.mv-lc-link:hover { background: #e11d48; color: #fff; }
+
+/* ── Map ── */
+.mv-map-wrap { flex: 1; position: relative; }
+#mvMap { width: 100%; height: 100%; }
+
+/* FABs */
+.mv-fab-group { position: absolute; bottom: 24px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+.mv-fab {
+  width: 40px; height: 40px;
+  background: #fff;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #374151;
+  font-size: 1rem;
+  transition: background .2s, color .2s;
+}
+.mv-fab:hover { background: #e11d48; color: #fff; }
+
+/* Loading overlay */
+.mv-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 1000;
+  font-size: .9rem;
+  color: #6b7280;
+}
+.mv-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #f3f4f6;
+  border-top-color: #e11d48;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Markers ── */
+.mv-marker {
+  width: 34px; height: 34px;
+  background: #e11d48;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(225,29,72,.4);
+  transition: transform .15s, background .15s;
+}
+.mv-marker i {
+  transform: rotate(45deg);
+  color: #fff;
+  font-size: .85rem;
+}
+.mv-marker.mv-marker-hl {
+  background: #7c3aed;
+  transform: rotate(-45deg) scale(1.2);
+  box-shadow: 0 4px 12px rgba(124,58,237,.5);
+}
+
+.mv-user-marker {
+  width: 16px; height: 16px;
+  background: #3b82f6;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #3b82f6;
+  position: relative;
+}
+.mv-user-pulse {
+  position: absolute;
+  inset: -8px;
+  background: rgba(59,130,246,.2);
+  border-radius: 50%;
+  animation: pulse 2s ease-out infinite;
+}
+@keyframes pulse { 0%{transform:scale(.5);opacity:1} 100%{transform:scale(1.5);opacity:0} }
+
+/* ── Popup ── */
+.mv-popup { width: 240px; }
+.mv-popup-img-wrap { position: relative; height: 120px; border-radius: 8px 8px 0 0; overflow: hidden; background: #f3f4f6; }
+.mv-popup-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mv-popup-img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #d1d5db; font-size: 2rem; }
+.mv-popup-type-badge { position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: .68rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+.mv-popup-verified { position: absolute; top: 6px; right: 6px; background: #fff; color: #22c55e; border-radius: 99px; font-size: .7rem; font-weight: 600; padding: 2px 7px; display: flex; align-items: center; gap: 3px; }
+.mv-popup-body { padding: 10px 12px 12px; }
+.mv-popup-title { font-weight: 700; font-size: .88rem; color: #111; line-height: 1.3; margin-bottom: 4px; }
+.mv-popup-location { font-size: .75rem; color: #6b7280; margin-bottom: 4px; }
+.mv-popup-meta { font-size: .75rem; color: #9ca3af; margin-bottom: 8px; }
+.mv-popup-price-row { display: flex; align-items: center; justify-content: space-between; }
+.mv-popup-price { font-size: .9rem; font-weight: 800; color: #e11d48; }
+
+/* Override Leaflet popup chrome */
+.mv-popup-container .leaflet-popup-content-wrapper { padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.mv-popup-container .leaflet-popup-content { margin: 0; width: auto !important; }
+.mv-popup-container .leaflet-popup-tip { background: #fff; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .mv-wrap { flex-direction: column; height: calc(100vh - 56px); }
+  .mv-sidebar {
+    width: 100%;
+    min-width: 100%;
+    max-height: 45vh;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .mv-sidebar.collapsed { max-height: 52px; overflow: hidden; }
+  .mv-sidebar-collapse i { transform: rotate(90deg); }
+  .mv-sidebar.collapsed .mv-sidebar-collapse i { transform: rotate(-90deg); }
+  .mv-map-wrap { flex: 1; }
+}
+</style>
+{% endblock %}

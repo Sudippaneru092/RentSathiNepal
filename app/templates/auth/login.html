@@ -40,16 +40,7 @@
         </div>
       </div>
 
-      <div class="apl-testimonial">
-        <div class="apl-quote">"RentSathi helped me find my dream flat in Kathmandu within 3 days. Highly recommended!"</div>
-        <div class="apl-author">
-          <div class="apl-author-avatar">A</div>
-          <div>
-            <div class="apl-author-name">Anita Maharjan</div>
-            <div class="apl-author-role">Tenant · Kathmandu</div>
-          </div>
-        </div>
-      </div>
+  
 
     </div>
   </div>
@@ -104,7 +95,7 @@
         <div class="field-group">
           <div class="field-label-row">
             <label class="field-label">Password</label>
-            <a href="#" class="forgot-link">Forgot password?</a>
+            <a href="{{ url_for('auth.forgot_password') }}" class="forgot-link">Forgot password?</a>
           </div>
           <div class="field-wrap">
             <i class="bi bi-lock field-icon"></i>
@@ -135,10 +126,6 @@
 
       <p class="auth-terms-note">By signing in you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a></p>
 
-      <div class="demo-hint">
-        <i class="bi bi-info-circle me-1"></i>
-        
-      </div>
 
     </div>
   </div>

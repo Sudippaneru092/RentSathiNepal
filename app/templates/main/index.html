@@ -21,7 +21,7 @@
                 </p>
 
                 <!-- Search Bar -->
-                <form method="GET" action="{{ url_for('main.index') }}">
+                <form method="GET" action="{{ url_for('main.listings') }}">
                     <div class="hero-search-box">
                         <select name="property_type">
                             <option value="">All</option>
@@ -76,14 +76,14 @@
             <div class="col-6 col-md-3">
                 <div class="stat-item">
                     <span class="stat-icon text-primary"><i class="bi bi-houses"></i></span>
-                    <span class="stat-num">3,200+</span>
+                    <span class="stat-num">{{ total_properties }}+</span>
                     <span class="stat-label">Properties Listed</span>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="stat-item">
                     <span class="stat-icon text-success"><i class="bi bi-people"></i></span>
-                    <span class="stat-num">12,000+</span>
+                    <span class="stat-num">{{ total_users }}+</span>
                     <span class="stat-label">Happy Tenants</span>
                 </div>
             </div>
@@ -97,8 +97,8 @@
             <div class="col-6 col-md-3">
                 <div class="stat-item">
                     <span class="stat-icon text-danger"><i class="bi bi-patch-check"></i></span>
-                    <span class="stat-num">98%</span>
-                    <span class="stat-label">Verified Listings</span>
+                    <span class="stat-num">{{ total_owners }}+</span>
+                    <span class="stat-label">Verified Owners</span>
                 </div>
             </div>
         </div>
@@ -114,21 +114,21 @@
         </div>
         <div class="row g-3 justify-content-center">
             {% set categories = [
-                ('room',      'bi-door-open',   '#3b82f6', '840'),
-                ('flat',      'bi-building',    '#8b5cf6', '820'),
-                ('house',     'bi-house',       '#22c55e', '410'),
-                ('apartment', 'bi-buildings',   '#f97316', '380'),
-                ('shutter',   'bi-shop',        '#ec4899', '290'),
-                ('hostel',    'bi-person-lines-fill', '#14b8a6', '180')
+                ('room',      'bi-door-open',   '#3b82f6'),
+                ('flat',      'bi-building',    '#8b5cf6'),
+                ('house',     'bi-house',       '#22c55e'),
+                ('apartment', 'bi-buildings',   '#f97316'),
+                ('shutter',   'bi-shop',        '#ec4899'),
+                ('hostel',    'bi-person-lines-fill', '#14b8a6')
             ] %}
-            {% for type, icon, color, count in categories %}
+            {% for type, icon, color in categories %}
             <div class="col-6 col-sm-4 col-md-2">
                 <a href="{{ url_for('main.listings', property_type=type) }}" class="category-card">
                     <div class="category-icon-wrap" style="background:{{ color }};">
                         <i class="bi {{ icon }}"></i>
                     </div>
                     <div class="category-name">{{ type.capitalize() }}</div>
-                    <div class="category-count">{{ count }} listings</div>
+                    <div class="category-count">{{ type_counts.get(type, 0) }} listings</div>
                 </a>
             </div>
             {% endfor %}
@@ -145,7 +145,7 @@
                 <h2 class="section-title mb-1">Featured Properties</h2>
                 <p class="section-sub mb-0">Hand-picked verified listings</p>
             </div>
-            <a href="{{ url_for('main.index') }}" class="view-all-link">
+            <a href="{{ url_for('main.listings') }}" class="view-all-link">
                 View All <i class="bi bi-arrow-right"></i>
             </a>
         </div>
@@ -194,7 +194,7 @@
                     <div class="prop-body">
                         <div class="d-flex align-items-start justify-content-between gap-2">
                             <div class="prop-title">{{ property.title }}</div>
-                            {% set avg = property.average_rating() %}
+                            {% set avg = rating_map.get(property.id, 0) %}
                             {% if avg > 0 %}
                                 <span class="prop-rating flex-shrink-0">
                                     <i class="bi bi-star-fill text-warning"></i> {{ avg }}
@@ -203,7 +203,7 @@
                         </div>
 
                         <div class="prop-location">
-                            <i class="bi bi-geo-alt-fill text-danger"></i>
+                            <i class="bi bi-geo-alt-fill text-primary"></i>
                             {{ property.area or property.district or '' }}{% if (property.area or property.district) and property.city %}, {% endif %}{{ property.city }}
                         </div>
 
@@ -275,12 +275,12 @@
         </div>
         <div class="row g-3">
             {% set cities = [
-                ('Kathmandu', 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?w=400&q=80', '1240'),
+                ('Kathmandu', 'https://res.klook.com/image/upload/w_1265,h_791,c_fill,q_85/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/msunsxhld9im8qddjyzj.webp', '1240'),
                 ('Pokhara',   'https://images.unsplash.com/photo-1585108011238-f33239534ba1?w=400&q=80', '680'),
                 ('Lalitpur',  'https://images.unsplash.com/photo-1614531341773-3bff8b7cb3fc?w=400&q=80', '520'),
                 ('Butwal',    'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=400&q=80', '310'),
                 ('Dhangadhi', 'https://images.unsplash.com/photo-1526711657229-e7e080ed7aa1?w=400&q=80', '180'),
-                ('Chitwan',   'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&q=80', '290')
+                ('Chitwan',   'https://www.viator.com/tours/Pokhara/Refreshing-Private-Pokhara-Day-Tour/d22291-66561P10', '290')
             ] %}
             {% for name, img, count in cities %}
             <div class="col-6 col-md-4 col-lg-2">
@@ -345,7 +345,7 @@
                 </div>
             </div>
             <div class="roommate-btns">
-                <a href="{{ url_for('auth.register') }}" class="btn-roommate-white">
+                <a href="{{ url_for('user.roommates') }}" class="btn-roommate-white">
                     <i class="bi bi-people"></i> Find Roommates
                 </a>
                 <a href="{{ url_for('user.roommate_profile') if current_user.is_authenticated and current_user.role == 'user' else url_for('auth.login') }}"
@@ -479,7 +479,7 @@
                     <li><a href="{{ url_for('main.index') }}">Home</a></li>
                     <li><a href="{{ url_for('main.listings') }}">Browse Listings</a></li>
                     <li><a href="#">Roommate Finder</a></li>
-                    <li><a href="#">Map View</a></li>
+                    <li><a href="{{ url_for('main.map_view') }}">Map View</a></li>
                     <li><a href="#">About Us</a></li>
                 </ul>
             </div>
@@ -500,9 +500,9 @@
             <!-- Contact -->
             <div class="col-lg-3 col-md-6">
                 <div class="footer-heading">Contact Us</div>
-                <div class="footer-contact-item"><i class="bi bi-geo-alt-fill text-danger"></i> Dhangadhi, kailali, Nepal</div>
-                <div class="footer-contact-item"><i class="bi bi-telephone-fill text-danger"></i> +977-1-4567890</div>
-                <div class="footer-contact-item"><i class="bi bi-envelope-fill text-danger"></i> info@rentsathi.com.np</div>
+                <div class="footer-contact-item"><i class="bi bi-geo-alt-fill text-primary"></i> Dhangadhi, kailali, Nepal</div>
+                <div class="footer-contact-item"><i class="bi bi-telephone-fill text-primary"></i> +977-1-4567890</div>
+                <div class="footer-contact-item"><i class="bi bi-envelope-fill text-primary"></i> info@rentsathi.com.np</div>
                 <div class="footer-heading mt-3">Subscribe to our newsletter</div>
                 <div class="footer-newsletter">
                     <input type="email" placeholder="Your email">

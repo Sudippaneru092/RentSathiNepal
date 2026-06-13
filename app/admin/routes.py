@@ -1,9 +1,12 @@
 from functools import wraps
+import logging
 from flask import render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
 from app import db
 from app.admin import admin_bp
 from app.models import User, Property, OwnerProfile, Report, AdminLog, Review
+
+logger = logging.getLogger('rentsathi')
 
 
 def admin_required(f):
@@ -81,13 +84,22 @@ def verify_property(property_id):
     action = request.form.get('action')
     if action == 'verify':
         property.verification_status = 'verified'
+        db.session.commit()
         flash(f'Property "{property.title}" has been verified.', 'success')
         log_action('verify_property', f'Verified property ID {property_id}: {property.title}')
+        logger.info('Admin %s verified property id=%s "%s"',
+                    current_user.id, property_id, property.title)
+        from app.utils.notifications import notify_property_verified
+        notify_property_verified(property)
     elif action == 'reject':
         property.verification_status = 'rejected'
+        db.session.commit()
         flash(f'Property "{property.title}" has been rejected.', 'warning')
         log_action('reject_property', f'Rejected property ID {property_id}: {property.title}')
-    db.session.commit()
+        logger.info('Admin %s rejected property id=%s "%s"',
+                    current_user.id, property_id, property.title)
+        from app.utils.notifications import notify_property_rejected
+        notify_property_rejected(property)
     return redirect(url_for('admin.properties'))
 
 
@@ -122,10 +134,14 @@ def toggle_user_status(user_id):
         user.account_status = 'suspended'
         flash(f'User {user.full_name} has been suspended.', 'warning')
         log_action('suspend_user', f'Suspended user ID {user_id}: {user.email}')
+        logger.info('Admin %s suspended user id=%s %s',
+                    current_user.id, user_id, user.email)
     else:
         user.account_status = 'active'
         flash(f'User {user.full_name} has been activated.', 'success')
         log_action('activate_user', f'Activated user ID {user_id}: {user.email}')
+        logger.info('Admin %s activated user id=%s %s',
+                    current_user.id, user_id, user.email)
     db.session.commit()
     return redirect(url_for('admin.users'))
 
@@ -154,13 +170,22 @@ def verify_owner(owner_id):
     action = request.form.get('action')
     if action == 'verify':
         owner.verification_status = 'verified'
+        db.session.commit()
         flash('Owner has been verified.', 'success')
         log_action('verify_owner', f'Verified owner profile ID {owner_id}')
+        logger.info('Admin %s verified owner profile id=%s user=%s',
+                    current_user.id, owner_id, owner.user_id)
+        from app.utils.notifications import notify_owner_verified
+        notify_owner_verified(owner)
     elif action == 'reject':
         owner.verification_status = 'rejected'
+        db.session.commit()
         flash('Owner has been rejected.', 'warning')
         log_action('reject_owner', f'Rejected owner profile ID {owner_id}')
-    db.session.commit()
+        logger.info('Admin %s rejected owner profile id=%s user=%s',
+                    current_user.id, owner_id, owner.user_id)
+        from app.utils.notifications import notify_owner_rejected
+        notify_owner_rejected(owner)
     return redirect(url_for('admin.owners'))
 
 

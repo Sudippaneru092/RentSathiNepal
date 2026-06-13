@@ -1,10 +1,13 @@
 from flask import render_template, request, flash, redirect, url_for, jsonify
 from flask_login import current_user, login_required
 from sqlalchemy import or_, func
+import logging
 from app import db
 from app.main import main_bp
 from app.models import Property, Review, Favorite, User, Amenity, PropertyAmenity, Chat
 from app.utils.geocode import haversine_km, format_distance, geocode_address
+
+logger = logging.getLogger('rentsathi')
 
 
 def _build_search_query(args):
@@ -87,12 +90,46 @@ def _build_search_query(args):
     return query
 
 
+def _get_rating_map(property_ids):
+    """
+    Return {property_id: avg_rating} for a list of property IDs.
+    Single aggregated query — avoids N+1.
+    """
+    if not property_ids:
+        return {}
+    rows = db.session.query(
+        Review.property_id,
+        func.round(func.avg(Review.rating), 1).label('avg_rating')
+    ).filter(Review.property_id.in_(property_ids)
+    ).group_by(Review.property_id).all()
+    return {r.property_id: float(r.avg_rating) for r in rows}
+
+
 @main_bp.route('/')
 def index():
-    # For home page just show latest 9 verified properties
+    # Real stats from DB
+    total_properties = Property.query.filter_by(
+        status='active', availability_status='available', verification_status='verified'
+    ).count()
+    total_owners = User.query.filter_by(role='owner').count()
+    total_users  = User.query.filter_by(role='user').count()
+
+    # Category counts — one query, grouped by property_type
+    type_counts_raw = db.session.query(
+        Property.property_type, func.count(Property.id)
+    ).filter_by(
+        status='active', availability_status='available', verification_status='verified'
+    ).group_by(Property.property_type).all()
+    type_counts = {t: c for t, c in type_counts_raw}
+
+    # Latest 9 verified properties for the featured section
     properties = Property.query.filter_by(
         status='active', availability_status='available', verification_status='verified'
     ).order_by(Property.created_at.desc()).paginate(page=1, per_page=9, error_out=False)
+
+    # Pre-fetch ratings in one query to avoid N+1
+    prop_ids = [p.id for p in properties.items]
+    rating_map = _get_rating_map(prop_ids)
 
     favorite_ids = set()
     if current_user.is_authenticated:
@@ -104,7 +141,12 @@ def index():
         title='Find Your Perfect Home in Nepal',
         properties=properties,
         favorite_ids=favorite_ids,
+        rating_map=rating_map,
         search_params={'city': '', 'property_type': ''},
+        total_properties=total_properties,
+        total_owners=total_owners,
+        total_users=total_users,
+        type_counts=type_counts,
     )
 
 
@@ -123,6 +165,10 @@ def listings():
 
     query = _build_search_query(request.args)
     properties = query.paginate(page=page, per_page=12, error_out=False)
+
+    # Pre-fetch ratings in one query to avoid N+1
+    prop_ids = [p.id for p in properties.items]
+    rating_map = _get_rating_map(prop_ids)
 
     # Active filter chips — collect non-empty filters for display
     active_filters = []
@@ -175,6 +221,7 @@ def listings():
         search_params=search_params,
         price_min_db=price_min_db,
         price_max_db=price_max_db,
+        rating_map=rating_map,
         # current filter values
         q=q, city=city, ptype=ptype,
         min_p=min_p, max_p=max_p,
@@ -183,7 +230,56 @@ def listings():
     )
 
 
-@main_bp.route('/search/suggestions')
+@main_bp.route('/map')
+def map_view():
+    """
+    Full-page interactive map. All property data is loaded via /api/nearby
+    on the client side after geolocation, or shows all verified properties
+    without a location constraint using a static query.
+    """
+    # Pre-load all active verified properties that have coordinates for
+    # the initial map render (no location required).
+    all_props = Property.query.filter(
+        Property.status == 'active',
+        Property.availability_status == 'available',
+        Property.verification_status == 'verified',
+        Property.latitude.isnot(None),
+        Property.longitude.isnot(None),
+    ).all()
+
+    # Serialise to a JSON-safe list for the template
+    import json as _json
+
+    def _img_url(path):
+        if not path:
+            return None
+        if path.startswith('http'):
+            return path
+        return url_for('static', filename=path)
+
+    props_json = _json.dumps([{
+        'id':       p.id,
+        'title':    p.title,
+        'lat':      p.latitude,
+        'lng':      p.longitude,
+        'price':    float(p.price),
+        'type':     p.property_type,
+        'city':     p.city,
+        'bedrooms': p.bedrooms,
+        'bathrooms':p.bathrooms,
+        'verified': p.verification_status == 'verified',
+        'image':    _img_url(p.get_primary_image()),
+        'url':      url_for('main.property_detail', property_id=p.id),
+    } for p in all_props])
+
+    return render_template(
+        'main/map_view.html',
+        title='Map View — RentSathi Nepal',
+        props_json=props_json,
+        total=len(all_props),
+    )
+
+
 def search_suggestions():
     """AJAX endpoint: returns city/title suggestions as JSON."""
     term = request.args.get('q', '').strip()
@@ -341,6 +437,19 @@ def property_detail(property_id):
     ).all()
     images = property.images.all()
 
+    # VacancyCalendar — only future/current entries, sorted by start date
+    from app.models import VacancyCalendar
+    from datetime import date as _date
+    today = _date.today()
+    vacancy_entries = VacancyCalendar.query.filter_by(
+        property_id=property_id, status='available'
+    ).filter(
+        db.or_(
+            VacancyCalendar.available_until.is_(None),
+            VacancyCalendar.available_until >= today,
+        )
+    ).order_by(VacancyCalendar.available_from.asc()).all()
+
     is_favorite = False
     if current_user.is_authenticated:
         is_favorite = Favorite.query.filter_by(
@@ -357,6 +466,7 @@ def property_detail(property_id):
         reviews=reviews,
         amenities=amenities,
         images=images,
+        vacancy_entries=vacancy_entries,
         is_favorite=is_favorite,
         owner=owner,
         now=_dt.utcnow(),
@@ -412,8 +522,10 @@ def add_review(property_id):
         db.session.add(review)
         db.session.commit()
         flash('Your review has been submitted!', 'success')
-    except Exception:
+    except Exception as exc:
         db.session.rollback()
+        logger.error('Review submission failed for property %s by user %s: %s',
+                     property_id, current_user.id, exc, exc_info=True)
         flash('An error occurred while submitting your review.', 'danger')
 
     return redirect(url_for('main.property_detail', property_id=property_id))
@@ -510,7 +622,8 @@ def book_property(property_id):
     )
     db.session.add(chat)
     db.session.commit()
-
+    logger.info('Booking request created: property=%s tenant=%s move_in=%s',
+                property_id, current_user.id, move_in_str)
     flash('Booking request sent! The owner will respond within 24–48 hours.', 'success')
     return redirect(url_for('user.my_bookings'))
 

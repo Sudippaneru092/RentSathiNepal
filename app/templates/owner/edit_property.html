@@ -198,6 +198,88 @@
                     </div>
                 </div>
 
+                <!-- Manage Availability (VacancyCalendar) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="fw-semibold mb-0">
+                            <i class="bi bi-calendar2-check me-2 text-success"></i>Availability Windows
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Add date ranges when this property will be available for move-in.
+                            Tenants will see these on the listing page.
+                        </p>
+
+                        <!-- Existing entries -->
+                        {% set vacancies = property.vacancy_calendar.order_by('available_from').all() %}
+                        {% if vacancies %}
+                        <div class="vac-manage-list mb-3">
+                            {% for entry in vacancies %}
+                            <div class="vac-manage-row">
+                                <div class="vac-manage-info">
+                                    <i class="bi bi-calendar-event text-success me-2"></i>
+                                    <span>
+                                        <strong>From</strong> {{ entry.available_from.strftime('%b %d, %Y') }}
+                                        {% if entry.available_until %}
+                                            <strong class="mx-1">→</strong>
+                                            {{ entry.available_until.strftime('%b %d, %Y') }}
+                                            <span class="vac-days-badge">
+                                                {{ (entry.available_until - entry.available_from).days }}d
+                                            </span>
+                                        {% else %}
+                                            <span class="vac-open-badge ms-2">Open-ended</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <form method="POST"
+                                      action="{{ url_for('owner.delete_vacancy', property_id=property.id, entry_id=entry.id) }}"
+                                      style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
+                                            title="Remove"
+                                            onclick="return confirm('Remove this availability window?')">
+                                        <i class="bi bi-trash3" style="font-size:.75rem;"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-light border py-2 px-3 mb-3" style="font-size:.85rem;">
+                            <i class="bi bi-calendar-x me-2 text-muted"></i>No availability windows set yet.
+                        </div>
+                        {% endif %}
+
+                        <!-- Add new entry -->
+                        <div class="vac-add-form">
+                            <p class="fw-semibold small mb-2">Add a new window:</p>
+                            <form method="POST"
+                                  action="{{ url_for('owner.add_vacancy', property_id=property.id) }}"
+                                  class="d-flex flex-wrap gap-2 align-items-end">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div>
+                                    <label class="form-label small mb-1">Available From <span class="text-danger">*</span></label>
+                                    <input type="date" name="available_from" class="form-control form-control-sm"
+                                           style="min-width:160px;"
+                                           min="{{ now_date }}" required>
+                                </div>
+                                <div>
+                                    <label class="form-label small mb-1">Available Until <span class="text-muted">(optional)</span></label>
+                                    <input type="date" name="available_until" class="form-control form-control-sm"
+                                           style="min-width:160px;">
+                                </div>
+                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 align-self-end">
+                                    <i class="bi bi-plus-circle me-1"></i>Add
+                                </button>
+                            </form>
+                            <p class="text-muted mt-2 mb-0" style="font-size:.75rem;">
+                                Leave "until" empty for an open-ended window (property available from that date onwards).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex gap-3 justify-content-end pb-4">
                     <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
                     <button type="submit" class="btn btn-primary px-5">
@@ -208,4 +290,20 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* ── Vacancy manage panel ── */
+.vac-manage-list { display:flex; flex-direction:column; gap:.5rem; }
+.vac-manage-row  {
+    display:flex; align-items:center; justify-content:space-between;
+    background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;
+    padding:8px 12px; font-size:.85rem; gap:.5rem;
+}
+.vac-manage-info { display:flex; align-items:center; flex-wrap:wrap; gap:.25rem .3rem; flex:1; min-width:0; }
+.vac-days-badge  { background:#dcfce7; color:#15803d; border-radius:99px; padding:1px 8px; font-size:.72rem; font-weight:600; }
+.vac-open-badge  { background:#dbeafe; color:#1d4ed8; border-radius:99px; padding:1px 8px; font-size:.72rem; font-weight:600; }
+.vac-add-form    { background:#f8fafc; border:1.5px dashed #d1fae5; border-radius:10px; padding:14px 16px; }
+</style>
 {% endblock %}

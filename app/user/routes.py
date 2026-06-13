@@ -1,11 +1,14 @@
 import os
 import uuid
+import logging
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.user import user_bp
 from app.models import Favorite, Property, RoommateProfile, Chat, Review
+
+logger = logging.getLogger('rentsathi')
 
 
 def save_file(file, subfolder='misc'):
@@ -27,7 +30,7 @@ def save_file(file, subfolder='misc'):
 def dashboard():
     # Total counts
     total_favorites = Favorite.query.filter_by(user_id=current_user.id).count()
-    total_messages = Chat.query.filter_by(receiver_id=current_user.id).count()
+    unread_count = Chat.query.filter_by(receiver_id=current_user.id, is_read=False).count()
     total_properties = Property.query.filter_by(status='active').count()
 
     # Recent favorites (up to 4 for dashboard grid)
@@ -62,12 +65,12 @@ def dashboard():
         fav_properties=fav_properties,
         recent_messages=recent_messages,
         total_favorites=total_favorites,
-        total_messages=total_messages,
+        total_messages=unread_count,
         total_properties=total_properties,
         has_roommate_profile=has_roommate_profile,
         roommate_profile=roommate_profile,
         fav_count=total_favorites,
-        unread_count=total_messages,
+        unread_count=unread_count,
     )
 
 
@@ -98,6 +101,8 @@ def profile():
 
         if current_password:
             if not check_password_hash(current_user.password, current_password):
+                logger.warning('Failed password change attempt for user %s from %s',
+                               current_user.id, request.remote_addr)
                 flash('Current password is incorrect.', 'danger')
                 return redirect(url_for('user.profile'))
             if not new_password:
@@ -110,8 +115,10 @@ def profile():
                 flash('Password must be at least 6 characters.', 'danger')
                 return redirect(url_for('user.profile'))
             current_user.password = generate_password_hash(new_password)
+            logger.info('Password changed for user %s', current_user.id)
 
         db.session.commit()
+        logger.info('Profile updated for user %s', current_user.id)
         flash('Profile updated successfully!', 'success')
         return redirect(url_for('user.profile'))
 
@@ -207,6 +214,11 @@ def messages():
         .order_by(Chat.sent_at.desc())
         .all()
     )
+
+    # Mark all received messages as read
+    Chat.query.filter_by(receiver_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+
     return render_template('user/messages.html', title='Messages', received=received, sent=sent)
 
 
@@ -232,5 +244,96 @@ def cancel_booking(booking_id):
         return redirect(url_for('user.my_bookings'))
     booking.status = 'cancelled'
     db.session.commit()
+    logger.info('Booking cancelled: booking_id=%s by tenant=%s', booking_id, current_user.id)
     flash('Booking request cancelled.', 'info')
     return redirect(url_for('user.my_bookings'))
+
+
+# ── ROOMMATE BROWSE ────────────────────────────────────────────────────────
+
+@user_bp.route('/roommates')
+def roommates():
+    """
+    Public browse page — anyone can see profiles, login required to view details.
+    Filters: city, gender_preference, max_budget, occupation keyword.
+    """
+    from app.models import User as UserModel
+
+    city       = request.args.get('city', '').strip()
+    gender     = request.args.get('gender', '').strip()
+    max_budget = request.args.get('max_budget', '').strip()
+    keyword    = request.args.get('q', '').strip()
+    page       = request.args.get('page', 1, type=int)
+
+    query = RoommateProfile.query
+
+    if city:
+        query = query.filter(RoommateProfile.preferred_city.ilike(f'%{city}%'))
+    if gender:
+        query = query.filter_by(gender_preference=gender)
+    if max_budget:
+        try:
+            query = query.filter(RoommateProfile.budget <= float(max_budget))
+        except ValueError:
+            pass
+    if keyword:
+        like = f'%{keyword}%'
+        query = query.filter(
+            db.or_(
+                RoommateProfile.occupation.ilike(like),
+                RoommateProfile.bio.ilike(like),
+                RoommateProfile.lifestyle.ilike(like),
+            )
+        )
+
+    # Exclude the current user's own profile from browse
+    if current_user.is_authenticated:
+        query = query.filter(RoommateProfile.user_id != current_user.id)
+
+    # Only show profiles belonging to active user accounts
+    query = query.join(UserModel, RoommateProfile.user_id == UserModel.id)\
+                 .filter(UserModel.account_status == 'active')
+
+    profiles = query.order_by(RoommateProfile.created_at.desc())\
+                    .paginate(page=page, per_page=12, error_out=False)
+
+    # Stats for hero
+    total_profiles = RoommateProfile.query.join(UserModel)\
+        .filter(UserModel.account_status == 'active').count()
+
+    # Distinct cities for filter dropdown
+    cities = db.session.query(RoommateProfile.preferred_city)\
+        .filter(RoommateProfile.preferred_city.isnot(None),
+                RoommateProfile.preferred_city != '')\
+        .distinct().order_by(RoommateProfile.preferred_city).all()
+    cities = [c[0] for c in cities]
+
+    search_params = {k: v for k, v in request.args.items() if k != 'page'}
+
+    return render_template(
+        'user/roommates.html',
+        title='Find a Roommate',
+        profiles=profiles,
+        total_profiles=total_profiles,
+        cities=cities,
+        search_params=search_params,
+        city=city, gender=gender,
+        max_budget=max_budget, keyword=keyword,
+    )
+
+
+@user_bp.route('/roommates/<int:profile_id>')
+def roommate_view(profile_id):
+    """View a single roommate profile."""
+    from app.models import User as UserModel
+    rp = RoommateProfile.query.get_or_404(profile_id)
+    owner = UserModel.query.get_or_404(rp.user_id)
+    if owner.account_status != 'active':
+        flash('This profile is no longer available.', 'warning')
+        return redirect(url_for('user.roommates'))
+    return render_template(
+        'user/roommate_view.html',
+        title=f'{owner.full_name} — Roommate Profile',
+        rp=rp,
+        owner=owner,
+    )

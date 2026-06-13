@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 import threading
 from functools import wraps
 from flask import render_template, redirect, url_for, flash, request, current_app, abort
@@ -9,6 +10,8 @@ from app import db
 from app.owner import owner_bp
 from app.models import Property, PropertyImage, PropertyDocument, Amenity, PropertyAmenity, OwnerProfile
 from app.utils.geocode import geocode_address
+
+logger = logging.getLogger('rentsathi')
 
 
 def _geocode_property_async(app, property_id, address, city):
@@ -256,6 +259,8 @@ def add_property():
         if lat is None or lon is None:
             _geocode_property_async(current_app._get_current_object(), property.id, address, city)
 
+        logger.info('Property added: id=%s title=%r owner=%s',
+                    property.id, property.title, current_user.id)
         flash('Property added successfully! It will be visible after verification.', 'success')
         return redirect(url_for('owner.dashboard'))
 
@@ -341,7 +346,8 @@ def edit_property(property_id):
 
     return render_template('owner/edit_property.html', title='Edit Property',
                            property=property, amenities=amenities,
-                           existing_amenity_ids=existing_amenity_ids)
+                           existing_amenity_ids=existing_amenity_ids,
+                           now_date=__import__('datetime').date.today().isoformat())
 
 
 @owner_bp.route('/property/<int:property_id>/delete', methods=['POST'])
@@ -354,6 +360,8 @@ def delete_property(property_id):
 
     db.session.delete(property)
     db.session.commit()
+    logger.info('Property deleted: id=%s title=%r by owner=%s',
+                property_id, property.title, current_user.id)
     flash('Property deleted successfully.', 'success')
     return redirect(url_for('owner.dashboard'))
 
@@ -416,6 +424,11 @@ def respond_booking(booking_id):
         )
         db.session.add(chat)
         db.session.commit()
+        # Email notification
+        from app.utils.notifications import notify_booking_confirmed
+        notify_booking_confirmed(booking)
+        logger.info('Booking confirmed: booking_id=%s property=%s tenant=%s by owner=%s',
+                    booking_id, booking.property_id, booking.tenant_id, current_user.id)
         flash('Booking confirmed! The property is now marked as occupied.', 'success')
 
     elif action == 'reject':
@@ -430,12 +443,85 @@ def respond_booking(booking_id):
         )
         db.session.add(chat)
         db.session.commit()
+        # Email notification
+        from app.utils.notifications import notify_booking_rejected
+        notify_booking_rejected(booking)
+        logger.info('Booking rejected: booking_id=%s property=%s tenant=%s by owner=%s',
+                    booking_id, booking.property_id, booking.tenant_id, current_user.id)
         flash('Booking request declined.', 'info')
 
     return redirect(url_for('owner.bookings'))
 
 
-@owner_bp.route('/profile', methods=['GET', 'POST'])
+@owner_bp.route('/property/<int:property_id>/vacancy/add', methods=['POST'])
+@login_required
+@owner_required
+def add_vacancy(property_id):
+    """Add a VacancyCalendar entry for a property."""
+    from app.models import VacancyCalendar
+    from datetime import date as _date
+
+    prop = Property.query.get_or_404(property_id)
+    if prop.owner_id != current_user.id:
+        abort(403)
+
+    available_from = request.form.get('available_from', '').strip()
+    available_until = request.form.get('available_until', '').strip()
+
+    if not available_from:
+        flash('Available from date is required.', 'danger')
+        return redirect(url_for('owner.edit_property', property_id=property_id))
+
+    try:
+        from_date = _date.fromisoformat(available_from)
+    except ValueError:
+        flash('Invalid "available from" date.', 'danger')
+        return redirect(url_for('owner.edit_property', property_id=property_id))
+
+    until_date = None
+    if available_until:
+        try:
+            until_date = _date.fromisoformat(available_until)
+            if until_date <= from_date:
+                flash('"Available until" must be after "available from".', 'danger')
+                return redirect(url_for('owner.edit_property', property_id=property_id))
+        except ValueError:
+            flash('Invalid "available until" date.', 'danger')
+            return redirect(url_for('owner.edit_property', property_id=property_id))
+
+    entry = VacancyCalendar(
+        property_id=property_id,
+        available_from=from_date,
+        available_until=until_date,
+        status='available',
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash('Availability window added.', 'success')
+    return redirect(url_for('owner.edit_property', property_id=property_id))
+
+
+@owner_bp.route('/property/<int:property_id>/vacancy/<int:entry_id>/delete', methods=['POST'])
+@login_required
+@owner_required
+def delete_vacancy(property_id, entry_id):
+    """Remove a VacancyCalendar entry."""
+    from app.models import VacancyCalendar
+
+    prop = Property.query.get_or_404(property_id)
+    if prop.owner_id != current_user.id:
+        abort(403)
+
+    entry = VacancyCalendar.query.get_or_404(entry_id)
+    if entry.property_id != property_id:
+        abort(403)
+
+    db.session.delete(entry)
+    db.session.commit()
+    flash('Availability window removed.', 'info')
+    return redirect(url_for('owner.edit_property', property_id=property_id))
+
+
 @login_required
 @owner_required
 def owner_profile():
