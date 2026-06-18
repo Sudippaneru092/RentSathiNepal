@@ -9,15 +9,15 @@
   <aside class="user-sidebar" id="userSidebar">
 
     <!-- Logo -->
-    <div class="user-sidebar-logo">
+    <a href="{{ url_for('main.index') }}" class="user-sidebar-logo" style="text-decoration:none;">
       <div class="sidebar-logo-icon">
-        <i class="bi bi-house-fill"></i>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="RentSathi Nepal" style="width:40px;height:40px;object-fit:contain;border-radius:8px;">
       </div>
       <div class="sidebar-logo-text">
         <span class="sidebar-brand-name">RentSathi</span>
         <span class="sidebar-brand-sub">Nepal — My Account</span>
       </div>
-    </div>
+    </a>
 
     <!-- Navigation -->
     <nav class="user-nav">

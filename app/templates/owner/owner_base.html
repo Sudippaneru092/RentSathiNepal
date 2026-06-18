@@ -9,15 +9,15 @@
   <aside class="owner-sidebar" id="ownerSidebar">
 
     <!-- Logo -->
-    <div class="owner-sidebar-logo">
+    <a href="{{ url_for('main.index') }}" class="owner-sidebar-logo" style="text-decoration:none;">
       <div class="sidebar-logo-icon">
-        <i class="bi bi-house-fill"></i>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="RentSathi Nepal" style="width:40px;height:40px;object-fit:contain;border-radius:8px;">
       </div>
       <div class="sidebar-logo-text">
         <span class="sidebar-brand-name">RentSathi</span>
         <span class="sidebar-brand-sub">Nepal — Owner</span>
       </div>
-    </div>
+    </a>
 
     <!-- Navigation -->
     <nav class="owner-nav">
@@ -80,12 +80,7 @@
         <span class="owner-nav-label">My Profile</span>
       </a>
 
-      <a href="{{ url_for('main.index') }}"
-         class="owner-nav-item"
-         data-tooltip="View Site">
-        <i class="bi bi-house-door owner-nav-icon"></i>
-        <span class="owner-nav-label">View Site</span>
-      </a>
+
     </nav>
 
     <!-- Sidebar footer: user info + logout -->

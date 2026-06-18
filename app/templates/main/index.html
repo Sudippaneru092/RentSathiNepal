@@ -90,7 +90,7 @@
             <div class="col-6 col-md-3">
                 <div class="stat-item">
                     <span class="stat-icon" style="color:#a855f7"><i class="bi bi-geo-alt"></i></span>
-                    <span class="stat-num">25+</span>
+                    <span class="stat-num">{{ total_cities }}+</span>
                     <span class="stat-label">Cities Covered</span>
                 </div>
             </div>
@@ -339,7 +339,7 @@
                     professionals across Nepal.
                 </p>
                 <div class="roommate-checks">
-                    <span><i class="bi bi-check2"></i> 2,400+ active profiles</span>
+                    <span><i class="bi bi-check2"></i> {{ total_roommate_profiles }}+ active profiles</span>
                     <span><i class="bi bi-check2"></i> Verified users</span>
                     <span><i class="bi bi-check2"></i> Free to use</span>
                 </div>
@@ -362,36 +362,35 @@
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="section-title">What Our Users Say</h2>
-            <p class="section-sub">Trusted by thousands across Nepal</p>
+            <p class="section-sub">Real reviews from verified tenants on RentSathi</p>
         </div>
         <div class="row g-4">
-            {% set testimonials = [
-                ('Anita Maharjan',  'Tenant · Kathmandu', 'AM', '"RentSathi made finding my flat so easy! The verified listings gave me confidence and I found my perfect home in just 3 days. The GPS search feature is amazing!"'),
-                ('Rajesh Tamang',   'Landlord · Pokhara', 'RT', '"As a landlord, managing my properties has never been easier. I get genuine tenant requests and the digital agreement feature saves so much time."'),
-                ('Priya Adhikari',  'Tenant · Lalitpur',  'PA', '"The roommate finder feature helped me find a compatible flatmate. The platform is very user-friendly and the chat system works great!"'),
-                ('Suresh KC',       'Landlord · Butwal',  'SK', '"I listed my property and got a tenant within a week. The admin verification process builds trust with tenants. Highly recommended!"')
-            ] %}
-            {% for name, role, initials, text in testimonials %}
-            <div class="col-md-6 col-lg-3">
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                        <i class="bi bi-star-fill"></i>
-                    </div>
-                    <p class="testimonial-text">{{ text }}</p>
-                    <div class="testimonial-author">
-                        <div class="testimonial-avatar">{{ initials }}</div>
-                        <div>
-                            <div class="testimonial-name">{{ name }}</div>
-                            <div class="testimonial-role">{{ role }}</div>
+            {% if recent_reviews %}
+                {% for review in recent_reviews %}
+                <div class="col-md-6 col-lg-3">
+                    <div class="testimonial-card">
+                        <div class="testimonial-stars">
+                            {% for i in range(1, 6) %}
+                                <i class="bi bi-star{% if i <= review.rating %}-fill{% endif %}"></i>
+                            {% endfor %}
+                        </div>
+                        <p class="testimonial-text">"{{ review.review or 'Great property!' }}"</p>
+                        <div class="testimonial-author">
+                            <div class="testimonial-avatar">{{ review.reviewer.full_name[0].upper() }}</div>
+                            <div>
+                                <div class="testimonial-name">{{ review.reviewer.full_name }}</div>
+                                <div class="testimonial-role">Tenant · {{ review.property.city }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            {% endfor %}
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center text-muted py-4">
+                    <i class="bi bi-chat-square-quote fs-1 mb-3 d-block opacity-25"></i>
+                    <p>Be the first to leave a review!</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -432,7 +431,7 @@
     <div class="container">
         <div class="cta-dark-icon"><i class="bi bi-graph-up-arrow"></i></div>
         <h2>Ready to Find Your Next Home?</h2>
-        <p>Join 12,000+ happy tenants and landlords on RentSathi Nepal</p>
+        <p>Join {{ total_users }}+ happy tenants and {{ total_owners }}+ landlords on RentSathi Nepal</p>
         <div class="cta-dark-btns">
             <a href="{{ url_for('main.listings') }}" class="btn-cta-red">
                 <i class="bi bi-search"></i> Find Rental Now

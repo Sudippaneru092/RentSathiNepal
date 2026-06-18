@@ -13,15 +13,20 @@
 {% set is_admin_page = request.endpoint and request.endpoint.startswith('admin.') %}
 {% set is_owner_dash = request.endpoint and request.endpoint.startswith('owner.') %}
 {% set is_user_dash = request.endpoint and request.endpoint.startswith('user.') %}
+
+{# Roommate pages extend base.html but should still show the main navbar #}
+{% set is_roommate_pages = request.endpoint in ('user.roommates','user.roommate_view','user.roommate_profile') %}
 <body>
 
 <!-- ===== NAVBAR ===== -->
-{% if not is_auth_page and not is_admin_page and not is_owner_dash and not is_user_dash %}
+{% if not is_auth_page and not is_admin_page and not is_owner_dash and (not is_user_dash or is_roommate_pages) %}
 <nav class="navbar-rentsathi">
     <div class="container d-flex align-items-center gap-3">
         <!-- Brand -->
         <a href="{{ url_for('main.index') }}" class="navbar-brand me-2">
-            <div class="brand-icon"><i class="bi bi-house-fill"></i></div>
+            <div class="brand-icon">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="RentSathi Nepal" style="width:36px;height:36px;object-fit:contain;border-radius:8px;">
+            </div>
             <div class="brand-text">
                 <span class="name">RentSathi</span>
                 <span class="sub">Nepal</span>

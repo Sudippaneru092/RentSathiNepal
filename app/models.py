@@ -129,10 +129,12 @@ class Property(db.Model):
         return img.image_path
 
     def average_rating(self):
-        reviews = self.reviews.all()
-        if not reviews:
-            return 0
-        return round(sum(r.rating for r in reviews) / len(reviews), 1)
+        from sqlalchemy import func
+        from app import db
+        result = db.session.query(func.round(func.avg(Review.rating), 1)).filter_by(
+            property_id=self.id
+        ).scalar()
+        return float(result) if result else 0
 
 
 class Amenity(db.Model):

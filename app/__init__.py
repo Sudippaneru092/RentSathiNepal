@@ -111,4 +111,34 @@ def create_app(config_class=Config):
         from flask import url_for
         return url_for('static', filename=path)
 
+    # ── Global stats context processor ───────────────────────────────────
+    @app.context_processor
+    def inject_global_stats():
+        """Inject real DB stats into every template (used on auth pages etc.)."""
+        try:
+            from app.models import Property as _Prop, User as _User, RoommateProfile as _RP
+            from sqlalchemy import func as _func
+            _total_properties = _Prop.query.filter_by(
+                status='active', availability_status='available', verification_status='verified'
+            ).count()
+            _total_users  = _User.query.filter_by(role='user').count()
+            _total_owners = _User.query.filter_by(role='owner').count()
+            _total_cities = db.session.query(
+                _func.count(_func.distinct(_Prop.city))
+            ).filter_by(
+                status='active', availability_status='available', verification_status='verified'
+            ).scalar() or 0
+            _total_roommate_profiles = _RP.query.join(_User).filter(
+                _User.account_status == 'active'
+            ).count()
+        except Exception:
+            _total_properties = _total_users = _total_owners = _total_cities = _total_roommate_profiles = 0
+        return dict(
+            g_total_properties=_total_properties,
+            g_total_users=_total_users,
+            g_total_owners=_total_owners,
+            g_total_cities=_total_cities,
+            g_total_roommate_profiles=_total_roommate_profiles,
+        )
+
     return app

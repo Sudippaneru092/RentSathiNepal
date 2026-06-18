@@ -4,7 +4,7 @@ from sqlalchemy import or_, func
 import logging
 from app import db
 from app.main import main_bp
-from app.models import Property, Review, Favorite, User, Amenity, PropertyAmenity, Chat
+from app.models import Property, Review, Favorite, User, Amenity, PropertyAmenity, Chat, RoommateProfile
 from app.utils.geocode import haversine_km, format_distance, geocode_address
 
 logger = logging.getLogger('rentsathi')
@@ -122,6 +122,22 @@ def index():
     ).group_by(Property.property_type).all()
     type_counts = {t: c for t, c in type_counts_raw}
 
+    # City count — distinct cities with active verified properties
+    total_cities = db.session.query(func.count(func.distinct(Property.city))).filter_by(
+        status='active', availability_status='available', verification_status='verified'
+    ).scalar() or 0
+
+    # Roommate profiles count
+    total_roommate_profiles = RoommateProfile.query.join(User).filter(
+        User.account_status == 'active'
+    ).count()
+
+    # Recent reviews with text for testimonials section (max 4)
+    recent_reviews = Review.query.filter(
+        Review.review.isnot(None),
+        Review.review != ''
+    ).order_by(Review.created_at.desc()).limit(4).all()
+
     # Latest 9 verified properties for the featured section
     properties = Property.query.filter_by(
         status='active', availability_status='available', verification_status='verified'
@@ -146,7 +162,10 @@ def index():
         total_properties=total_properties,
         total_owners=total_owners,
         total_users=total_users,
+        total_cities=total_cities,
+        total_roommate_profiles=total_roommate_profiles,
         type_counts=type_counts,
+        recent_reviews=recent_reviews,
     )
 
 
