@@ -248,7 +248,7 @@
                 {% for num in properties.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                     {% if num %}
                         <li class="page-item {% if num == properties.page %}active{% endif %}">
-                            <a class="page-link rounded-3" href="{{ url_for('main.index', page=num, **search_params) }}">{{ num }}</a>
+                            <a class="page-link rounded-3" href="{{ url_for('main.listings', page=num, **search_params) }}">{{ num }}</a>
                         </li>
                     {% else %}
                         <li class="page-item disabled"><span class="page-link rounded-3">…</span></li>
