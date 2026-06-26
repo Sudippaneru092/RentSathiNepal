@@ -47,8 +47,8 @@
                class="nav-link {% if request.endpoint == 'main.map_view' %}active{% endif %}">Map View</a>
             <a href="{{ url_for('user.roommates') }}"
                class="nav-link {% if request.endpoint in ('user.roommates', 'user.roommate_view') %}active{% endif %}">Roommates</a>
-            <a href="#about" class="nav-link">About</a>
-            <a href="#contact" class="nav-link">Contact</a>
+            <a href="{{ url_for('main.index') }}#about" class="nav-link">About</a>
+            <a href="{{ url_for('main.index') }}#contact" class="nav-link">Contact</a>
 
             {% if current_user.is_authenticated %}
                 {% if current_user.role == 'owner' %}
