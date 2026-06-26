@@ -521,9 +521,9 @@ def delete_vacancy(property_id, entry_id):
     flash('Availability window removed.', 'info')
     return redirect(url_for('owner.edit_property', property_id=property_id))
 
-
+@owner_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
-@owner_required
+@owner_required 
 def owner_profile():
     owner_profile = OwnerProfile.query.filter_by(user_id=current_user.id).first()
     if not owner_profile:
