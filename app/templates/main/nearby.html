@@ -164,6 +164,24 @@
 <script>
 {% if waiting %}
 /* ── Location Permission Flow ── */
+// Try automatically on page load if location is already allowed
+document.addEventListener('DOMContentLoaded', function () {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        window.location.href = `/nearby?lat=${lat}&lng=${lng}&radius=5`;
+      },
+      function (err) {
+        console.log('Auto geolocation failed:', err.code, err.message);
+        // do nothing — stay on waiting screen, button remains clickable
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }
+});
+
 document.getElementById('allowLocationBtn')?.addEventListener('click', function () {
   const btn = this;
   const errEl = document.getElementById('locationError');
