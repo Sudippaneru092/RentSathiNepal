@@ -214,7 +214,19 @@ function addMarkers(props) {
       className: 'mv-popup-container',
     });
 
-    marker.on('click', () => highlightCard(p.id));
+        marker.on('click', () => {
+        map.flyTo([p.lat, p.lng], 17, {
+            animate: true,
+            duration: 1
+        });
+
+        highlightCard(p.id);
+
+        // Keep the popup open after flying
+        setTimeout(() => {
+            marker.openPopup();
+        }, 500);
+    });
     markersMap[p.id] = { marker, data: p };
     bounds.push([p.lat, p.lng]);
   });
@@ -429,6 +441,8 @@ document.getElementById('mvLoading').style.display = 'flex';
 // Small delay so map tiles start loading first
 setTimeout(() => {
   applyFilters();
+  map.invalidateSize();      
+
   document.getElementById('mvLoading').style.display = 'none';
 }, 300);
 </script>
