@@ -287,3 +287,42 @@ class AdminLog(db.Model):
 
     def __repr__(self):
         return f'<AdminLog admin={self.admin_id} action={self.action}>'
+
+
+import random
+from datetime import timedelta
+
+class EmailOTP(db.Model):
+    __tablename__ = 'email_otps'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    email = db.Column(db.String(150), nullable=False, index=True)
+
+    otp = db.Column(db.String(6), nullable=False)
+
+    purpose = db.Column(
+        db.String(30),
+        nullable=False,
+        default='registration'
+    )  # registration, reset_password, change_email
+
+    is_verified = db.Column(db.Boolean, default=False)
+
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def is_expired(self):
+        return datetime.utcnow() > self.expires_at
+
+    @staticmethod
+    def generate_otp():
+        return str(random.randint(100000, 999999))
+
+    @staticmethod
+    def expiry_time(minutes=10):
+        return datetime.utcnow() + timedelta(minutes=minutes)
+
+    def __repr__(self):
+        return f'<EmailOTP {self.email}>'

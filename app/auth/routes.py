@@ -5,13 +5,46 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.auth import auth_bp
 from app.auth.forms import LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm
-from app.models import User, OwnerProfile
+from app.models import User, OwnerProfile, EmailOTP
 from app.utils.logger import log_auth_attempt
 from app.utils.rate_limiter import rate_limit
+import random
+from datetime import datetime, timedelta
+from app.auth.forms import (
+    LoginForm,
+    RegisterForm,
+    ForgotPasswordForm,
+    ResetPasswordForm,
+    VerifyEmailForm
+)
+from flask import (
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    session
+)
+
+from flask_mail import Message
+from flask import current_app
+from app import mail
 
 logger = logging.getLogger('rentsathi')
 
 
+"""
+Helper function to generate otp for email verification
+"""
+
+def generate_otp():
+    """Generate a random 6-digit OTP."""
+    return str(random.randint(100000, 999999))
+
+
+"""
+Login
+"""
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @rate_limit(requests_per_minute=20, by_user=False)
 def login():
@@ -45,6 +78,9 @@ def login():
     return render_template('auth/login.html', title='Login', form=form)
 
 
+"""
+Registration
+"""
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @rate_limit(requests_per_minute=10, by_user=False)
 def register():
@@ -52,35 +88,170 @@ def register():
         return _redirect_after_login(current_user)
 
     form = RegisterForm()
+
     if form.validate_on_submit():
+
+        email = form.email.data.lower().strip()
+
+        existing_user = User.query.filter_by(email=email).first()
+
+        if existing_user:
+            flash("This email is already registered.", "danger")
+            return redirect(url_for("auth.register"))
+
+        # Remove any old OTP for this email
+        EmailOTP.query.filter_by(email=email).delete()
+
+        otp = generate_otp()
+
+        email_otp = EmailOTP(
+            email=email,
+            otp=otp,
+            expires_at=datetime.utcnow() + timedelta(minutes=10)
+        )
+
+        db.session.add(email_otp)
+        db.session.commit()
+
+        session["pending_registration"] = {
+            "full_name": form.full_name.data.strip(),
+            "email": email,
+            "phone": form.phone.data.strip() if form.phone.data else None,
+            "password": generate_password_hash(form.password.data),
+            "role": form.role.data
+        }
+
+        # Email sending comes next step
+        _send_verification_otp(email, otp)
+        return redirect(url_for("auth.verify_email"))
+
+    return render_template(
+        'auth/register.html',
+        title='Register',
+        form=form
+    )
+    return render_template(
+        'auth/register.html',
+        title='Register',
+        form=form
+    )
+
+
+def _send_verification_otp(email, otp):
+    """Send the email verification OTP."""
+
+    from flask import current_app, render_template
+    from flask_mail import Message
+    from app import mail
+
+    if not current_app.config.get("MAIL_USERNAME"):
+        current_app.logger.warning(
+            "[DEV] Verification OTP for %s: %s",
+            email,
+            otp
+        )
+        return
+
+    msg = Message(
+        subject="Verify Your RentSathi Nepal Email",
+        recipients=[email],
+        html=render_template(
+            "auth/email_verification.html",
+            otp=otp,
+            expiry=current_app.config.get("EMAIL_VERIFY_EXPIRY", 300)
+        ),
+    )
+
+    mail.send(msg)
+
+@auth_bp.route("/verify-email", methods=["GET", "POST"])
+@rate_limit(requests_per_minute=10, by_user=False)
+def verify_email():
+    print("=== verify_email() entered ===")
+
+    if "pending_registration" not in session:
+        print("No pending_registration in session")
+        flash("Your registration session has expired. Please register again.", "warning")
+        return redirect(url_for("auth.register"))
+
+    form = VerifyEmailForm()
+    email = session["pending_registration"]["email"]
+
+    print("Request method:", request.method)
+    print("Form data:", request.form)
+    print("Form errors:", form.errors)
+
+    form = VerifyEmailForm()
+    email = session["pending_registration"]["email"]
+
+    valid = form.validate_on_submit()
+
+    print("validate_on_submit:", valid)
+    print("otp.data:", repr(form.otp.data))
+    print("form.errors:", form.errors)
+
+
+    if form.validate_on_submit():
+
+        otp_record = EmailOTP.query.filter_by(email=email).first()
+
+        if not otp_record:
+            flash("Verification code not found. Please request a new one.", "danger")
+            return redirect(url_for("auth.verify_email"))
+
+        if otp_record.expires_at < datetime.utcnow():
+            db.session.delete(otp_record)
+            db.session.commit()
+
+            flash("Your verification code has expired. Please request a new one.", "danger")
+            return redirect(url_for("auth.verify_email"))
+
+        if otp_record.otp != form.otp.data:
+            flash("Invalid verification code.", "danger")
+            return redirect(url_for("auth.verify_email"))
+
+        data = session["pending_registration"]
+
         user = User(
-            full_name=form.full_name.data.strip(),
-            email=form.email.data.lower().strip(),
-            phone=form.phone.data.strip() if form.phone.data else None,
-            password=generate_password_hash(form.password.data),
-            role=form.role.data,
-            account_status='active',
+            full_name=data["full_name"],
+            email=data["email"],
+            phone=data["phone"],
+            password=data["password"],
+            role=data["role"],
+            account_status="active",
             profile_complete=False,
         )
+
         db.session.add(user)
         db.session.flush()
 
-        if form.role.data == 'owner':
+        if data["role"] == "owner":
             owner_profile = OwnerProfile(
                 user_id=user.id,
-                verification_status='pending'
+                verification_status="pending"
             )
             db.session.add(owner_profile)
 
+        db.session.delete(otp_record)
         db.session.commit()
-        logger.info('New user registered: %s role=%s from %s',
-                    user.email, user.role, request.remote_addr)
+
+        session.pop("pending_registration", None)
+
         login_user(user)
-        flash(f'Welcome to RentSathi Nepal, {user.full_name.split()[0]}! Let\'s set up your profile.', 'success')
-        return redirect(url_for('auth.complete_profile'))
 
-    return render_template('auth/register.html', title='Register', form=form)
+        flash(
+            f"Welcome to RentSathi Nepal, {user.full_name.split()[0]}!",
+            "success"
+        )
 
+        return redirect(url_for("auth.complete_profile"))
+
+    return render_template(
+        "auth/verify_email.html",
+        title="Verify Email",
+        form=form,
+        email=email
+    )
 
 @auth_bp.route('/complete-profile', methods=['GET', 'POST'])
 @login_required

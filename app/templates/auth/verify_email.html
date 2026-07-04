@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-wrap">
+ 
+  <!-- ═══ LEFT PANEL ═══ -->
+  <div class="auth-panel-left">
+    <div class="apl-bg"></div>
+    <div class="apl-overlay"></div>
+    <div class="apl-content">
+      <a href="{{ url_for('main.index') }}" class="apl-logo">
+        <div class="apl-logo-icon"><i class="bi bi-house-fill"></i></div>
+        <div>
+          <div class="apl-logo-name">RentSathi</div>
+          <div class="apl-logo-sub">Nepal</div>
+        </div>
+      </a>
+      <div class="apl-headline">
+        <h1>Verify<br>Your Email</h1>
+        <p>We just sent a 6-digit code to your inbox. Enter it below to confirm it's really you.</p>
+      </div>
+      <div class="apl-steps">
+        <div class="apl-step">
+          <span class="apl-step-num">1</span>
+          <span>Check your inbox (and spam folder)</span>
+        </div>
+        <div class="apl-step">
+          <span class="apl-step-num">2</span>
+          <span>Enter the 6-digit verification code</span>
+        </div>
+        <div class="apl-step">
+          <span class="apl-step-num">3</span>
+          <span>You're verified — start using RentSathi</span>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ═══ RIGHT PANEL ═══ -->
+  <div class="auth-panel-right">
+ 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="padding: 20px 44px 0;">
+          {% for category, message in messages %}
+            <div class="auth-flash auth-flash-{{ 'danger' if category == 'error' else category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+ 
+    <div class="apr-inner">
+ 
+      <!-- Mobile logo -->
+      <a href="{{ url_for('main.index') }}" class="apr-mobile-logo">
+        <div class="brand-icon"><i class="bi bi-house-fill"></i></div>
+        <span style="font-weight:700;color:#111;">RentSathi Nepal</span>
+      </a>
+ 
+      <div class="apr-header">
+        <div class="apr-icon-wrap mb-3">
+          <div class="apr-icon-circle">
+            <i class="bi bi-shield-check"></i>
+          </div>
+        </div>
+        <h2 class="apr-title">Enter Verification Code</h2>
+        <p class="apr-sub">
+          We sent a 6-digit code to
+          <strong>{{ email or "your email" }}</strong>.
+          Enter it below to verify your account.
+        </p>
+      </div>
+ 
+  <form method="POST" action="{{ url_for('auth.verify_email') }}" novalidate id="otpForm">  
+      {{ form.csrf_token }}
+
+      {{ form.otp(class="d-none", id="otpHidden") }}
+ 
+        <div class="field-group">
+          <label class="field-label">Verification Code</label>
+          <div class="otp-boxes" id="otpBoxes">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-index="0" autocomplete="one-time-code">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-index="1">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-index="2">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-index="3">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-index="4">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-index="5">
+          </div>
+          {% for e in form.otp.errors %}
+            <div class="field-err-msg text-center"><i class="bi bi-exclamation-circle me-1"></i>{{ e }}</div>
+          {% endfor %}
+        </div>
+ 
+        <div class="otp-timer-row">
+          <span id="otpTimerText">Code expires in <strong id="otpCountdown">05:00</strong></span>
+        </div>
+ 
+        <button type="submit" class="auth-submit-btn" id="otpSubmit">
+          <i class="bi bi-check-circle me-2"></i>
+          <span>Verify Email</span>
+        </button>
+      </form>
+ 
+      <p class="auth-terms-note mt-4" id="resendRow">
+        Didn't get the code?
+        <a href="{{ url_for('auth.verify_email') }}" class="apr-link" id="resendLink">Resend Code</a>
+      </p>
+ 
+      <p class="auth-terms-note">
+        Wrong email?
+        <a href="{{ url_for('auth.register') }}" class="apr-link">Go back</a>
+      </p>
+ 
+    </div>
+  </div>
+ 
+</div>
+{% endblock %}
+ 
+{% block scripts %}
+<style>
+  .apl-steps { margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+  .apl-step  { display: flex; align-items: center; gap: 0.75rem; color: rgba(255,255,255,0.85); font-size: 0.9rem; }
+  .apl-step-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.8rem; color: #fff;
+  }
+  .apr-icon-circle {
+    width: 64px; height: 64px;
+    background: #fff0f0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #e11d48; font-size: 1.6rem;
+    margin: 0 auto;
+  }
+  .apr-icon-wrap { text-align: center; }
+ 
+  .otp-boxes {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 6px;
+  }
+  .otp-box {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    border: 1.5px solid #e2e2e2;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    color: #111;
+  }
+  .otp-box:focus {
+    border-color: #e11d48;
+    box-shadow: 0 0 0 3px rgba(225,29,72,0.12);
+  }
+  .otp-box.filled {
+    border-color: #c9c9c9;
+    background: #fafafa;
+  }
+  .otp-timer-row {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #666;
+    margin: 14px 0 4px;
+  }
+  #otpCountdown { color: #e11d48; }
+  #resendLink.disabled {
+    pointer-events: none;
+    color: #aaa;
+    text-decoration: none;
+  }
+</style>
+<script>
+(function () {
+  const boxes = Array.from(document.querySelectorAll('.otp-box'));
+  const hidden = document.getElementById('otpHidden');
+  const form = document.getElementById('otpForm');
+  const submitBtn = document.getElementById('otpSubmit');
+ 
+  function syncHidden() {
+    hidden.value = boxes.map(b => b.value).join('');
+  }
+ 
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', function () {
+      this.value = this.value.replace(/[^0-9]/g, '').slice(0, 1);
+      this.classList.toggle('filled', !!this.value);
+      if (this.value && i < boxes.length - 1) {
+        boxes[i + 1].focus();
+      }
+      syncHidden();
+    });
+ 
+    box.addEventListener('keydown', function (e) {
+      if (e.key === 'Backspace' && !this.value && i > 0) {
+        boxes[i - 1].focus();
+      }
+    });
+ 
+    box.addEventListener('paste', function (e) {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      pasted.split('').slice(0, boxes.length).forEach((ch, idx) => {
+        boxes[idx].value = ch;
+        boxes[idx].classList.add('filled');
+      });
+      syncHidden();
+      const next = boxes[Math.min(pasted.length, boxes.length - 1)];
+      if (next) next.focus();
+    });
+  });
+ 
+  if (boxes[0]) boxes[0].focus();
+ 
+  form?.addEventListener('submit', function (e) {
+    syncHidden();
+    if (hidden.value.length < boxes.length) {
+      e.preventDefault();
+      boxes.find(b => !b.value)?.focus();
+      return;
+    }
+    submitBtn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i>Verifying...';
+    submitBtn.disabled = true;
+  });
+ 
+  // Countdown timer
+  let secondsLeft = 5 * 60;
+  const countdownEl = document.getElementById('otpCountdown');
+  const timerText = document.getElementById('otpTimerText');
+  const resendLink = document.getElementById('resendLink');
+  resendLink.classList.add('disabled');
+ 
+  const timer = setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft <= 0) {
+      clearInterval(timer);
+      timerText.innerHTML = 'Your code has expired.';
+      resendLink.classList.remove('disabled');
+      return;
+    }
+    const m = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+    const s = String(secondsLeft % 60).padStart(2, '0');
+    countdownEl.textContent = `${m}:${s}`;
+  }, 1000);
+})();
+</script>
+{% endblock %}
