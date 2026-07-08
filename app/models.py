@@ -1,14 +1,46 @@
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
+
 from flask_login import UserMixin
 from app import db, login_manager
+from sqlalchemy import text
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Don't load soft-deleted users into a session
+    return User.query.filter_by(id=int(user_id), is_deleted=False).first()
 
 
-class User(UserMixin, db.Model):
+
+"""
+Reusable mixin that adds soft-delete support to a model.
+
+- is_deleted: boolean flag, indexed for fast filtering
+- deleted_at: timestamp of when the record was soft-deleted
+
+Usage:
+    class MyModel(SoftDeleteMixin, db.Model):
+        ...
+
+    MyModel.query.filter_by(is_deleted=False).all()   # active records
+    instance.soft_delete()                             # delete
+    instance.restore()                                 # undo delete
+"""
+class SoftDeleteMixin:
+    is_deleted = db.Column(db.Boolean, default=False, server_default=text("false"), nullable=False, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+
+    def soft_delete(self):
+        self.is_deleted = True
+        self.deleted_at = datetime.utcnow()
+
+    def restore(self):
+        self.is_deleted = False
+        self.deleted_at = None
+
+
+class User(SoftDeleteMixin, UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -44,7 +76,7 @@ class User(UserMixin, db.Model):
         return f'<User {self.email}>'
 
 
-class OwnerProfile(db.Model):
+class OwnerProfile(SoftDeleteMixin, db.Model):
     __tablename__ = 'owner_profiles'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -61,7 +93,7 @@ class OwnerProfile(db.Model):
         return f'<OwnerProfile user_id={self.user_id}>'
 
 
-class RoommateProfile(db.Model):
+class RoommateProfile(SoftDeleteMixin, db.Model):
     __tablename__ = 'roommate_profiles'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -80,7 +112,7 @@ class RoommateProfile(db.Model):
         return f'<RoommateProfile user_id={self.user_id}>'
 
 
-class Property(db.Model):
+class Property(SoftDeleteMixin, db.Model):
     __tablename__ = 'properties'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -137,7 +169,7 @@ class Property(db.Model):
         return float(result) if result else 0
 
 
-class Amenity(db.Model):
+class Amenity(SoftDeleteMixin, db.Model):
     __tablename__ = 'amenities'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -149,7 +181,7 @@ class Amenity(db.Model):
         return f'<Amenity {self.amenity_name}>'
 
 
-class PropertyAmenity(db.Model):
+class PropertyAmenity(SoftDeleteMixin, db.Model):
     __tablename__ = 'property_amenities'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -160,7 +192,7 @@ class PropertyAmenity(db.Model):
         return f'<PropertyAmenity property={self.property_id} amenity={self.amenity_id}>'
 
 
-class PropertyImage(db.Model):
+class PropertyImage(SoftDeleteMixin, db.Model):
     __tablename__ = 'property_images'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -172,7 +204,7 @@ class PropertyImage(db.Model):
         return f'<PropertyImage {self.image_path}>'
 
 
-class PropertyDocument(db.Model):
+class PropertyDocument(SoftDeleteMixin, db.Model):
     __tablename__ = 'property_documents'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -186,7 +218,7 @@ class PropertyDocument(db.Model):
         return f'<PropertyDocument {self.document_type}>'
 
 
-class VacancyCalendar(db.Model):
+class VacancyCalendar(SoftDeleteMixin, db.Model):
     __tablename__ = 'vacancy_calendar'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -199,7 +231,7 @@ class VacancyCalendar(db.Model):
         return f'<VacancyCalendar property={self.property_id}>'
 
 
-class Favorite(db.Model):
+class Favorite(SoftDeleteMixin, db.Model):
     __tablename__ = 'favorites'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -213,7 +245,7 @@ class Favorite(db.Model):
         return f'<Favorite user={self.user_id} property={self.property_id}>'
 
 
-class Chat(db.Model):
+class Chat(SoftDeleteMixin, db.Model):
     __tablename__ = 'chats'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -228,7 +260,7 @@ class Chat(db.Model):
         return f'<Chat sender={self.sender_id} receiver={self.receiver_id}>'
 
 
-class Review(db.Model):
+class Review(SoftDeleteMixin, db.Model):
     __tablename__ = 'reviews'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -242,7 +274,7 @@ class Review(db.Model):
         return f'<Review property={self.property_id} rating={self.rating}>'
 
 
-class Report(db.Model):
+class Report(SoftDeleteMixin, db.Model):
     __tablename__ = 'reports'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -256,27 +288,27 @@ class Report(db.Model):
         return f'<Report property={self.property_id} status={self.status}>'
 
 
-class Booking(db.Model):
+class Booking(SoftDeleteMixin, db.Model):
     __tablename__ = 'bookings'
 
     id = db.Column(db.Integer, primary_key=True)
-    property_id  = db.Column(db.Integer, db.ForeignKey('properties.id'), nullable=False)
-    tenant_id    = db.Column(db.Integer, db.ForeignKey('users.id'),  nullable=False)
+    property_id = db.Column(db.Integer, db.ForeignKey('properties.id'), nullable=False)
+    tenant_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     move_in_date = db.Column(db.Date, nullable=False)
-    message      = db.Column(db.Text, nullable=True)
-    status       = db.Column(db.String(20), default='pending')  # pending, confirmed, rejected, cancelled
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at   = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    message = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='pending')  # pending, confirmed, rejected, cancelled
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     property = db.relationship('Property', backref=db.backref('bookings', lazy='dynamic'))
-    tenant   = db.relationship('User',     backref=db.backref('bookings', lazy='dynamic'), foreign_keys=[tenant_id])
+    tenant = db.relationship('User', backref=db.backref('bookings', lazy='dynamic'), foreign_keys=[tenant_id])
 
     def __repr__(self):
         return f'<Booking property={self.property_id} tenant={self.tenant_id} status={self.status}>'
 
 
-class AdminLog(db.Model):
+class AdminLog(SoftDeleteMixin, db.Model):
     __tablename__ = 'admin_logs'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -289,28 +321,19 @@ class AdminLog(db.Model):
         return f'<AdminLog admin={self.admin_id} action={self.action}>'
 
 
-import random
-from datetime import timedelta
-
-class EmailOTP(db.Model):
+class EmailOTP(SoftDeleteMixin, db.Model):
     __tablename__ = 'email_otps'
 
     id = db.Column(db.Integer, primary_key=True)
-
     email = db.Column(db.String(150), nullable=False, index=True)
-
     otp = db.Column(db.String(6), nullable=False)
-
     purpose = db.Column(
         db.String(30),
         nullable=False,
         default='registration'
     )  # registration, reset_password, change_email
-
     is_verified = db.Column(db.Boolean, default=False)
-
     expires_at = db.Column(db.DateTime, nullable=False)
-
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def is_expired(self):

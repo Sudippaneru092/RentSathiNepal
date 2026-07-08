@@ -5,10 +5,100 @@ from flask_login import login_required, current_user
 from app import db
 from app.admin import admin_bp
 from app.models import User, Property, OwnerProfile, Report, AdminLog, Review
+from werkzeug.security import generate_password_hash, check_password_hash
 
 logger = logging.getLogger('rentsathi')
 
 
+@admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if current_user.role != 'admin':
+        abort(403)
+ 
+    user = User.query.get_or_404(user_id)
+ 
+    if request.method == 'POST':
+        user.full_name = request.form.get('full_name', user.full_name).strip()
+ 
+        new_email = request.form.get('email', user.email).strip().lower()
+        if new_email != user.email:
+            existing = User.query.filter(User.email == new_email, User.id != user.id).first()
+            if existing:
+                flash('That email is already in use by another account.', 'danger')
+                return redirect(url_for('admin.edit_user', user_id=user.id))
+            user.email = new_email
+ 
+        user.phone = request.form.get('phone', '').strip() or None
+        user.gender = request.form.get('gender') or None
+        user.occupation = request.form.get('occupation', '').strip() or None
+        user.province = request.form.get('province', '').strip() or None
+        user.district = request.form.get('district', '').strip() or None
+        user.city = request.form.get('city', '').strip() or None
+        user.address = request.form.get('address', '').strip() or None
+ 
+        new_role = request.form.get('role')
+        if new_role in ('user', 'owner', 'admin'):
+            if user.id == current_user.id and new_role != 'admin':
+                flash("You can't remove your own admin role.", 'warning')
+            else:
+                user.role = new_role
+ 
+        new_status = request.form.get('account_status')
+        if new_status in ('active', 'suspended'):
+            user.account_status = new_status
+ 
+        user.profile_complete = 'profile_complete' in request.form
+ 
+        db.session.commit()
+        flash(f"{user.full_name}'s details were updated.", 'success')
+        return redirect(url_for('admin.edit_user', user_id=user.id))
+ 
+    return render_template('admin/edit_user.html', user=user)
+ 
+ 
+@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@login_required
+def reset_user_password(user_id):
+    if current_user.role != 'admin':
+        abort(403)
+ 
+    user = User.query.get_or_404(user_id)
+ 
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
+ 
+    if len(new_password) < 8:
+        flash('Password must be at least 8 characters long.', 'danger')
+        return redirect(url_for('admin.edit_user', user_id=user.id))
+ 
+    if new_password != confirm_password:
+        flash('Passwords do not match.', 'danger')
+        return redirect(url_for('admin.edit_user', user_id=user.id))
+ 
+    # Same hashing function used at registration (app/auth/routes.py)
+    user.password = generate_password_hash(new_password)
+    db.session.commit()
+ 
+    flash(f'Password reset for {user.full_name}.', 'success')
+    return redirect(url_for('admin.edit_user', user_id=user.id))
+ 
+ 
+@admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+def delete_user(user_id):
+    user = User.query.filter_by(id=user_id, is_deleted=False).first_or_404()
+
+    if user.role == "admin":
+        flash("Admin accounts cannot be deleted.", "danger")
+        return redirect(url_for("admin.edit_user", user_id=user.id))
+
+    user.soft_delete()
+    db.session.commit()
+
+    flash("User deleted successfully.", "success")
+    return redirect(url_for("admin.users"))
+    
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -17,6 +107,18 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+@admin_bp.route("/users/<int:user_id>/restore", methods=["POST"])
+@login_required
+@admin_required
+def restore_user(user_id):
+    user = User.query.filter_by(id=user_id, is_deleted=True).first_or_404()
+
+    user.restore()
+    db.session.commit()
+
+    flash("User restored successfully.", "success")
+    return redirect(url_for("admin.users"))
 
 def log_action(action, description=None):
     log = AdminLog(admin_id=current_user.id, action=action, description=description)

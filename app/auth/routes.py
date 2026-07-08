@@ -25,8 +25,9 @@ from flask import (
     request,
     session
 )
-
+from flask import current_app, render_template
 from flask_mail import Message
+from app import mail
 from flask import current_app
 from app import mail
 
@@ -130,20 +131,11 @@ def register():
         title='Register',
         form=form
     )
-    return render_template(
-        'auth/register.html',
-        title='Register',
-        form=form
-    )
 
+
+"""Send the email verification OTP."""
 
 def _send_verification_otp(email, otp):
-    """Send the email verification OTP."""
-
-    from flask import current_app, render_template
-    from flask_mail import Message
-    from app import mail
-
     if not current_app.config.get("MAIL_USERNAME"):
         current_app.logger.warning(
             "[DEV] Verification OTP for %s: %s",

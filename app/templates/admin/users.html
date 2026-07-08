@@ -1,12 +1,12 @@
 {% extends "admin/admin_base.html" %}
-
+ 
 {% block admin_breadcrumb %}Manage Users{% endblock %}
-
+ 
 {% block admin_content %}
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="fw-bold mb-0">Manage Users</h4>
 </div>
-
+ 
 <!-- Filters -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-2">
@@ -25,7 +25,7 @@
         </form>
     </div>
 </div>
-
+ 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -67,17 +67,21 @@
                             </td>
                             <td class="small text-muted">{{ user.created_at.strftime('%b %d, %Y') }}</td>
                             <td class="text-end pe-3">
-                                {% if user.role != 'admin' %}
-                                    <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" class="d-inline">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit"
-                                                class="btn btn-sm {% if user.account_status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
-                                            {% if user.account_status == 'active' %}Suspend{% else %}Activate{% endif %}
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <span class="text-muted small">—</span>
-                                {% endif %}
+                                <div class="d-inline-flex gap-2">
+                                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Edit
+                                    </a>
+                                    {% if user.role != 'admin' %}
+                                        <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit"
+                                                    class="btn btn-sm {% if user.account_status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                                {% if user.account_status == 'active' %}Suspend{% else %}Activate{% endif %}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                     {% else %}
@@ -88,7 +92,7 @@
         </div>
     </div>
 </div>
-
+ 
 {% if users.pages > 1 %}
     <nav class="mt-4 d-flex justify-content-center">
         <ul class="pagination pagination-sm">
