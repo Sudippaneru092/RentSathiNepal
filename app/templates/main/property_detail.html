@@ -106,8 +106,8 @@
           </div>
         </div>
         <div class="pd-title-actions">
-          <!-- Favorite -->
-          {% if current_user.is_authenticated and current_user.role == 'user' %}
+          <!-- Favorite (available to any authenticated user, any role) -->
+          {% if current_user.is_authenticated %}
             <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=property.id) }}" style="display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="pd-action-btn {% if is_favorite %}pd-action-active{% endif %}" title="{% if is_favorite %}Remove from favorites{% else %}Save{% endif %}">
@@ -399,8 +399,26 @@
         {% endif %}
 
         <!-- Contact form (inline, not modal) -->
-        {% if current_user.is_authenticated and current_user.role == 'user' and current_user.id != property.owner_id %}
-          {# Check for active booking by this user #}
+        {% if current_user.is_authenticated and current_user.id == property.owner_id %}
+          <!-- Owner viewing their own property -->
+          <div class="pd-owner-notice">
+            <i class="bi bi-info-circle me-2"></i>
+            This is your property.
+            {% if property.availability_status == 'occupied' %}
+              <span class="pd-occupied-tag"><i class="bi bi-house-lock-fill me-1"></i>Occupied</span>
+            {% endif %}
+            <a href="{{ url_for('owner.edit_property', property_id=property.id) }}" class="pd-owner-edit-link">Edit listing</a>
+          </div>
+
+        {% elif current_user.is_authenticated and current_user.role == 'admin' %}
+          <!-- Admin browsing — booking actions aren't meant for admin accounts -->
+          <div class="pd-owner-notice">
+            <i class="bi bi-shield-lock me-2"></i>
+            Admin view — booking actions aren't available on admin accounts.
+          </div>
+
+        {% elif current_user.is_authenticated %}
+          {# Any other logged-in visitor — regular users AND other owners browsing this listing #}
           {% set active_booking = namespace(obj=None) %}
           {% for b in property.bookings.all() %}
             {% if b.tenant_id == current_user.id and b.status in ['pending', 'confirmed'] and not active_booking.obj %}
@@ -428,6 +446,23 @@
             <a href="{{ url_for('user.my_bookings') }}" class="pd-save-btn text-center text-decoration-none mb-2">
               <i class="bi bi-calendar-check me-2"></i>View My Bookings
             </a>
+
+          {% elif property.availability_status == 'occupied' %}
+            <!-- Property is already booked by someone else -->
+            <div class="pd-booking-status pd-bs-occupied">
+              <i class="bi bi-house-lock-fill fs-5"></i>
+              <div>
+                <div>Currently Unavailable</div>
+                <div class="pd-bs-detail">This property has already been booked.</div>
+              </div>
+            </div>
+            <form method="POST" action="{{ url_for('main.toggle_favorite', property_id=property.id) }}" class="mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="pd-save-btn {% if is_favorite %}pd-save-active{% endif %}">
+                <i class="bi bi-heart{% if is_favorite %}-fill{% endif %} me-2"></i>
+                {{ 'Saved' if is_favorite else 'Save to Favorites' }}
+              </button>
+            </form>
 
           {% else %}
             <form method="POST" action="{{ url_for('main.book_property', property_id=property.id) }}" class="pd-contact-form">
@@ -457,22 +492,27 @@
             </form>
           {% endif %}
 
-        {% elif current_user.is_authenticated and current_user.id == property.owner_id %}
-          <!-- Owner viewing their own property -->
-          <div class="pd-owner-notice">
-            <i class="bi bi-info-circle me-2"></i>
-            This is your property.
-            <a href="{{ url_for('owner.edit_property', property_id=property.id) }}" class="pd-owner-edit-link">Edit listing</a>
-          </div>
-
         {% else %}
           <!-- Not logged in -->
-          <div class="pd-card-cta">
-            <a href="{{ url_for('auth.login') }}" class="pd-request-btn">
-              <i class="bi bi-box-arrow-in-right me-2"></i>Sign in to Contact
+          {% if property.availability_status == 'occupied' %}
+            <div class="pd-booking-status pd-bs-occupied">
+              <i class="bi bi-house-lock-fill fs-5"></i>
+              <div>
+                <div>Currently Unavailable</div>
+                <div class="pd-bs-detail">This property has already been booked.</div>
+              </div>
+            </div>
+            <a href="{{ url_for('auth.login') }}" class="pd-save-btn text-center text-decoration-none mb-2">
+              <i class="bi bi-heart me-2"></i>Sign in to Save
             </a>
-            <p class="pd-cta-sub">or <a href="{{ url_for('auth.register') }}">create a free account</a></p>
-          </div>
+          {% else %}
+            <div class="pd-card-cta">
+              <a href="{{ url_for('auth.login') }}" class="pd-request-btn">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Sign in to Contact
+              </a>
+              <p class="pd-cta-sub">or <a href="{{ url_for('auth.register') }}">create a free account</a></p>
+            </div>
+          {% endif %}
         {% endif %}
 
         <!-- Owner info in card -->
@@ -609,6 +649,17 @@
 .vac-open   { background:#f0fdf4; color:#15803d; border-radius:99px; padding:2px 10px; font-size:.78rem; font-weight:600; }
 .vac-duration { background:#f0fdf4; color:#15803d; border-radius:99px; padding:2px 10px; font-size:.75rem; font-weight:500; }
 .vac-note   { font-size:.78rem; color:#9ca3af; margin:0; }
+
+/* ── Occupied-property indicators (contact card) ── */
+.pd-bs-occupied {
+  background:#fef2f2; color:#991b1b; border:1px solid #fecaca;
+  border-radius:12px; padding:.9rem 1rem; display:flex; align-items:flex-start; gap:.6rem; margin-bottom:.75rem;
+}
+.pd-bs-occupied .pd-bs-detail { color:#b91c1c; font-size:.82rem; margin-top:2px; }
+.pd-occupied-tag {
+  display:inline-flex; align-items:center; background:#fef2f2; color:#991b1b;
+  border-radius:99px; padding:2px 10px; font-size:.75rem; font-weight:600; margin-left:.4rem;
+}
 </style>
 
 <script>
