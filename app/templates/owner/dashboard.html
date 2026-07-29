@@ -4,7 +4,7 @@
 
 {% block owner_content %}
 
-    <div class="p-4">
+    <div class="p-1.5">
 
       <!-- ===== WELCOME BANNER ===== -->
       <div class="ud-welcome-banner mb-4">
@@ -134,7 +134,6 @@
 
 
 
-    <!-- ══ MAIN CONTENT: 2-col layout ══ -->
     <div class="od-main-stack">
 
       <!-- ROW 1: Properties -->
@@ -290,7 +289,7 @@
                       {{ total_inquiries }} total
                   </span>
 
-                  <a href="{{ url_for('chat.inbox')}}"
+                  <a href="{{ url_for('owner.dashboard') }}#inquiriesSection"
                     class="od-btn-sm-primary">
                       View All
                   </a>
