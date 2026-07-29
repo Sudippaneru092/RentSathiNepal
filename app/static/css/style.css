@@ -2328,7 +2328,38 @@ a { text-decoration: none; }
 .nearby-cards-panel::-webkit-scrollbar { width: 4px; }
 .nearby-cards-panel::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 2px; }
 .nearby-cards-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.ud-stats-scroll-container {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  white-space: nowrap;
+  padding-bottom: 0.5rem;
+  /* Hide scrollbar Firefox */
+  scrollbar-width: none;
+  /* Hide scrollbar IE/Edge */
+  -ms-overflow-style: none;
+}
 
+/* Hide scrollbar Chrome, Safari, Opera */
+.ud-stats-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.ud-stat-scroll-item {
+  flex: 0 0 220px;
+  min-width: 220px;
+}
+
+.ud-stat-icon.ud-stat-orange {
+  background: #fff7ed;
+  color: #f97316;
+}
+
+.ud-stat-icon.ud-stat-teal {
+  background: #f0fdfa;
+  color: #14b8a6;
+}
 /* Nearby Card */
 .nearby-card {
   display: flex;
