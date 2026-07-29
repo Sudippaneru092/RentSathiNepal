@@ -19,7 +19,11 @@
 <body>
 
 <!-- ===== NAVBAR ===== -->
-{% if not is_auth_page and not is_admin_page and not is_owner_dash and (not is_user_dash or is_roommate_pages) %}
+{% if not is_auth_page
+      and not is_admin_page
+      and not is_owner_dash
+      and not is_chat_page
+      and (not is_user_dash or is_roommate_pages) %}
 <nav class="navbar-rentsathi">
     <div class="container d-flex align-items-center gap-3">
         <!-- Brand -->
@@ -86,7 +90,7 @@
                             <li><a class="dropdown-item py-2" href="{{ url_for('user.dashboard') }}"><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</a></li>
                             <li><a class="dropdown-item py-2" href="{{ url_for('user.profile') }}"><i class="bi bi-person me-2 text-muted"></i>Profile</a></li>
                             <li><a class="dropdown-item py-2" href="{{ url_for('user.favorites') }}"><i class="bi bi-heart me-2 text-muted"></i>Favorites</a></li>
-                            <li><a class="dropdown-item py-2" href="{{ url_for('user.messages') }}"><i class="bi bi-chat me-2 text-muted"></i>Messages</a></li>
+                            <li><a class="dropdown-item py-2" href="{{ url_for('chat.inbox')}}"><i class="bi bi-chat me-2 text-muted"></i>Messages</a></li>
                         {% elif current_user.role == 'owner' %}
                             <li><a class="dropdown-item py-2" href="{{ url_for('owner.dashboard') }}"><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</a></li>
                             <li><a class="dropdown-item py-2" href="{{ url_for('owner.owner_profile') }}"><i class="bi bi-person me-2 text-muted"></i>Profile</a></li>
@@ -139,30 +143,20 @@
 </nav>
 {% endif %}{# end is_auth_page / is_admin_page / is_owner_dash / is_user_dash check #}
 
-<!-- Flash Messages (only on non-auth, non-admin, non-owner-dash, non-user-dash pages — those handle their own) -->
-{% if not is_auth_page and not is_admin_page and not is_owner_dash and not is_user_dash %}
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        <div class="container mt-3">
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-{% endwith %}
-{% endif %}
 
 <!-- Main Content -->
 <main>{% block content %}{% endblock %}</main>
 
 <!-- Chat FAB -->
-{% if current_user.is_authenticated and not is_auth_page and not is_admin_page and not is_owner_dash and not is_user_dash %}
-    <a href="{{ url_for('user.messages') if current_user.role == 'user' else '#' }}" class="chat-fab" title="Messages">
-        <i class="bi bi-chat-fill"></i>
-    </a>
+{% if current_user.is_authenticated
+      and not is_auth_page
+      and not is_admin_page
+      and not is_owner_dash
+      and not is_user_dash
+      and not is_chat_page %}
+    <a href="{{ url_for('chat.inbox') if current_user.is_authenticated and current_user.role in ['user', 'owner'] else '#' }}"
+    class="chat-fab"
+    title="Messages">
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -48,15 +48,15 @@
         </span>
       </a>
 
-      <a href="{{ url_for('user.messages') }}"
-         class="user-nav-item {% if current_endpoint == 'user.messages' %}active{% endif %}"
+      <a href="{{ url_for('chat.inbox')}}"
+         class="user-nav-item {% if request.endpoint == 'chat.inbox' %}active{% endif %}"
          data-tooltip="Messages">
         <i class="bi bi-chat-dots user-nav-icon"></i>
         <span class="user-nav-label">
           Messages
-          {% if unread_count is defined and unread_count > 0 %}
-            <span class="user-nav-badge">{{ unread_count }}</span>
-          {% endif %}
+          <span class="user-nav-badge  {% if not unread_count or unread_count == 0 %}d-none{% endif %}">
+            {{ unread_count if unread_count else 0 }}
+          </span>
         </span>
       </a>
 
@@ -168,7 +168,7 @@
             <li><a class="dropdown-item py-2" href="{{ url_for('user.dashboard') }}"><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</a></li>
             <li><a class="dropdown-item py-2" href="{{ url_for('user.profile') }}"><i class="bi bi-person-gear me-2 text-muted"></i>My Profile</a></li>
             <li><a class="dropdown-item py-2" href="{{ url_for('user.favorites') }}"><i class="bi bi-heart me-2 text-muted"></i>My Favorites</a></li>
-            <li><a class="dropdown-item py-2" href="{{ url_for('user.messages') }}"><i class="bi bi-chat-dots me-2 text-muted"></i>Messages</a></li>
+            <li><a class="dropdown-item py-2" href="{{ url_for('chat.inbox')}}"><i class="bi bi-chat-dots me-2 text-muted"></i>Messages</a></li>
             <li><a class="dropdown-item py-2" href="{{ url_for('main.listings') }}"><i class="bi bi-search me-2 text-muted"></i>Browse Rentals</a></li>
             <li><hr class="dropdown-divider my-1"></li>
             <li><a class="dropdown-item py-2 text-primary" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>

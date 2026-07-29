@@ -7,6 +7,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.user import user_bp
 from app.models import Favorite, Property, RoommateProfile, Chat, Review
+from sqlalchemy import or_, and_
+from app.models import User
 
 logger = logging.getLogger('rentsathi')
 
@@ -197,30 +199,6 @@ def roommate_profile():
         return redirect(url_for('user.roommate_profile'))
 
     return render_template('user/roommate_profile.html', title='Roommate Profile', rp=rp)
-
-
-@user_bp.route('/messages')
-@login_required
-def messages():
-    received = (
-        Chat.query
-        .filter_by(receiver_id=current_user.id)
-        .order_by(Chat.sent_at.desc())
-        .all()
-    )
-    sent = (
-        Chat.query
-        .filter_by(sender_id=current_user.id)
-        .order_by(Chat.sent_at.desc())
-        .all()
-    )
-
-    # Mark all received messages as read
-    Chat.query.filter_by(receiver_id=current_user.id, is_read=False).update({'is_read': True})
-    db.session.commit()
-
-    return render_template('user/messages.html', title='Messages', received=received, sent=sent)
-
 
 @user_bp.route('/bookings')
 @login_required

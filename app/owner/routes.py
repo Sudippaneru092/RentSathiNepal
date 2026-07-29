@@ -8,7 +8,8 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app import db
 from app.owner import owner_bp
-from app.models import Property, PropertyImage, PropertyDocument, Amenity, PropertyAmenity, OwnerProfile
+from app.models import Property, PropertyImage, PropertyDocument, Amenity, PropertyAmenity, OwnerProfile, Chat, User
+
 from app.utils.geocode import geocode_address
 
 logger = logging.getLogger('rentsathi')

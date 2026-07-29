@@ -7,6 +7,7 @@ from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
 from config import Config
+from flask_socketio import SocketIO
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -16,6 +17,7 @@ mail = Mail()
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'warning'
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def create_app(config_class=Config):
@@ -30,7 +32,7 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     csrf.init_app(app)
     mail.init_app(app)
-
+    socketio.init_app(app)
     # ── Structured logging ────────────────────────────────────────────────
     from app.utils.logger import setup_logging
     setup_logging(app)
@@ -51,6 +53,8 @@ def create_app(config_class=Config):
     from app.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/admin')
 
+    from app.chats import chat_bp
+    app.register_blueprint(chat_bp)
     # ── Access logging (after every request) ─────────────────────────────
     @app.after_request
     def log_access(response):
@@ -140,5 +144,67 @@ def create_app(config_class=Config):
             g_total_cities=_total_cities,
             g_total_roommate_profiles=_total_roommate_profiles,
         )
+    from flask_login import current_user
+    from app.models import Favorite, Chat
+    from flask_login import current_user
+
+    @app.context_processor
+    def inject_user_counts():
+        if current_user.is_authenticated:
+            from app.models import Favorite, Chat, Property
+            # Try importing Booking or BookingRequest depending on your model name
+            try:
+                from app.models import Booking
+            except ImportError:
+                from app.models import BookingRequest as Booking
+
+            # 1. Favorites count
+            fav_count = Favorite.query.filter_by(user_id=current_user.id).count()
+
+            # 2. Unread messages count
+            unread_count = Chat.query.filter_by(
+                receiver_id=current_user.id, 
+                is_read=False
+            ).count()
+
+            # 3. Pending bookings count
+            pending_bookings = 0
+            try:
+                if current_user.role == 'owner':
+                    # If Booking model has owner_id directly
+                    if hasattr(Booking, 'owner_id'):
+                        pending_bookings = Booking.query.filter_by(
+                            owner_id=current_user.id, 
+                            status='pending'
+                        ).count()
+                    else:
+                        # Join through Property if owner_id is on Property model
+                        pending_bookings = Booking.query.join(Property).filter(
+                            Property.owner_id == current_user.id,
+                            Booking.status == 'pending'
+                        ).count()
+                else:
+                    # For regular users/tenants: pending requests sent by them
+                    pending_bookings = Booking.query.filter_by(
+                        user_id=current_user.id, 
+                        status='pending'
+                    ).count()
+            except Exception:
+                pending_bookings = 0
+
+            return {
+                "fav_count": fav_count,
+                "unread_count": unread_count,
+                "pending_bookings": pending_bookings
+            }
+
+        return {
+            "fav_count": 0,
+            "unread_count": 0,
+            "pending_bookings": 0
+        }
+    with app.app_context():
+        from app import models
+        from app.chats import event
 
     return app
