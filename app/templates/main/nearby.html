@@ -156,6 +156,10 @@
 <!-- Leaflet.js (free, no API key) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
+
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 {% endif %}
 
 {% endblock %}
@@ -219,97 +223,13 @@ document.getElementById('allowLocationBtn')?.addEventListener('click', function 
 });
 
 {% else %}
-/* ── Map + Radius/Type controls ── */
+/* ── Controls: radius + type ──────────────────────────────────────────
+   These must work regardless of whether results/map exist for the
+   current radius. They are attached BEFORE any map code runs, so a
+   no-results radius (no #nearbyMap in the DOM) can never break them. */
 const USER_LAT = {{ user_lat }};
 const USER_LNG = {{ user_lng }};
 let currentRadius = {{ radius }};
-
-// Init Leaflet map
-const map = L.map('nearbyMap', { zoomControl: true }).setView([USER_LAT, USER_LNG], 13);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  maxZoom: 19,
-}).addTo(map);
-
-// User location marker (pulsing red)
-const userIcon = L.divIcon({
-  className: '',
-  html: '<div class="user-marker"><div class="user-marker-pulse"></div></div>',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-});
-L.marker([USER_LAT, USER_LNG], { icon: userIcon })
-  .addTo(map)
-  .bindPopup('<b>📍 Your Location</b>');
-
-// Radius circle
-let radiusCircle = L.circle([USER_LAT, USER_LNG], {
-  radius: currentRadius * 1000,
-  color: '#2563EB',
-  fillColor: '#2563EB',
-  fillOpacity: 0.07,
-  weight: 2,
-}).addTo(map);
-
-// Property markers
-const propIcon = L.divIcon({
-  className: '',
-  html: '<div class="prop-map-marker"><i class="bi bi-house-fill"></i></div>',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
-});
-
-const markers = {};
-document.querySelectorAll('.nearby-card').forEach(card => {
-  const lat = parseFloat(card.dataset.lat);
-  const lng = parseFloat(card.dataset.lng);
-  const id  = card.dataset.id;
-  if (!lat || !lng) return;
-
-  const marker = L.marker([lat, lng], { icon: propIcon }).addTo(map);
-  const title  = card.querySelector('.nc-title')?.textContent || '';
-  const price  = card.querySelector('.nc-price')?.textContent || '';
-  const dist   = card.querySelector('.nc-dist-badge')?.textContent?.trim() || '';
-
-  marker.bindPopup(`
-    <div style="min-width:160px;">
-      <div style="font-weight:700;font-size:.9rem;margin-bottom:4px;">${title}</div>
-      <div style="color:#2563EB;font-weight:700;">${price}</div>
-      <div style="font-size:.75rem;color:#6b7280;margin-top:2px;">${dist}</div>
-      <a href="${card.getAttribute('href')}" style="display:block;margin-top:8px;color:#2563EB;font-size:.8rem;font-weight:600;">View Details →</a>
-    </div>
-  `);
-  markers[id] = marker;
-
-  // Click card → open marker popup + highlight card
-  card.addEventListener('click', function (e) {
-    e.preventDefault();
-    document.querySelectorAll('.nearby-card').forEach(c => c.classList.remove('active'));
-    this.classList.add('active');
-    map.setView([lat, lng], 15, { animate: true });
-    marker.openPopup();
-  });
-
-  // Hover card → bounce marker
-  card.addEventListener('mouseenter', () => marker.openPopup());
-  card.addEventListener('mouseleave', () => marker.closePopup());
-});
-
-// Re-center button
-document.getElementById('recenterBtn')?.addEventListener('click', () => {
-  map.setView([USER_LAT, USER_LNG], 13, { animate: true });
-});
-
-// Radius buttons
-document.querySelectorAll('.radius-btn').forEach(btn => {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.radius-btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    setRadius(parseFloat(this.dataset.radius));
-  });
-});
 
 function setRadius(r) {
   const url = new URL(window.location.href);
@@ -319,7 +239,14 @@ function setRadius(r) {
   window.location.href = url.toString();
 }
 
-// Type select
+document.querySelectorAll('.radius-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.radius-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    setRadius(parseFloat(this.dataset.radius));
+  });
+});
+
 document.getElementById('nearbyType')?.addEventListener('change', function () {
   const url = new URL(window.location.href);
   url.searchParams.set('property_type', this.value);
@@ -327,6 +254,123 @@ document.getElementById('nearbyType')?.addEventListener('change', function () {
   url.searchParams.set('lng', USER_LNG);
   window.location.href = url.toString();
 });
+
+/* ── Map + markers + routing ──────────────────────────────────────────
+   Only runs if #nearbyMap actually exists (i.e. there are results at
+   this radius). This is the guard that was missing — L.map() throws
+   if the container isn't in the DOM, and that threw synchronously
+   before the button listeners above even got attached in the old code. */
+const mapEl = document.getElementById('nearbyMap');
+if (mapEl) {
+  const map = L.map('nearbyMap', { zoomControl: true }).setView([USER_LAT, USER_LNG], 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // User location marker (pulsing red)
+  const userIcon = L.divIcon({
+    className: '',
+    html: '<div class="user-marker"><div class="user-marker-pulse"></div></div>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+  L.marker([USER_LAT, USER_LNG], { icon: userIcon })
+    .addTo(map)
+    .bindPopup('<b>📍 Your Location</b>');
+
+  // Radius circle
+  let radiusCircle = L.circle([USER_LAT, USER_LNG], {
+    radius: currentRadius * 1000,
+    color: '#2563EB',
+    fillColor: '#2563EB',
+    fillOpacity: 0.07,
+    weight: 2,
+  }).addTo(map);
+
+  // Property markers
+  const propIcon = L.divIcon({
+    className: '',
+    html: '<div class="prop-map-marker"><i class="bi bi-house-fill"></i></div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  });
+
+  // Routing: draws the path from the user's location to a destination.
+  // Uses OSRM's public demo router (router.project-osrm.org) via
+  // leaflet-routing-machine's default. That endpoint is rate-limited —
+  // fine for dev/testing, swap in your own OSRM/Mapbox/GraphHopper
+  // instance before relying on this in production.
+  let routingControl = null;
+
+  function showRouteTo(lat, lng) {
+    if (routingControl) {
+      map.removeControl(routingControl);
+      routingControl = null;
+    }
+    routingControl = L.Routing.control({
+      waypoints: [L.latLng(USER_LAT, USER_LNG), L.latLng(lat, lng)],
+      routeWhileDragging: false,
+      addWaypoints: false,
+      draggableWaypoints: false,
+      fitSelectedRoutes: true,
+      show: false, // hides the turn-by-turn text panel by default
+      lineOptions: { styles: [{ color: '#2563EB', weight: 5, opacity: 0.85 }] },
+      createMarker: function () { return null; }, // we already have our own markers
+    }).addTo(map);
+  }
+
+  const markers = {};
+  document.querySelectorAll('.nearby-card').forEach(card => {
+    const lat = parseFloat(card.dataset.lat);
+    const lng = parseFloat(card.dataset.lng);
+    const id  = card.dataset.id;
+    if (!lat || !lng) return;
+
+    const marker = L.marker([lat, lng], { icon: propIcon }).addTo(map);
+    const title  = card.querySelector('.nc-title')?.textContent || '';
+    const price  = card.querySelector('.nc-price')?.textContent || '';
+    const dist   = card.querySelector('.nc-dist-badge')?.textContent?.trim() || '';
+
+    marker.bindPopup(`
+      <div style="min-width:160px;">
+        <div style="font-weight:700;font-size:.9rem;margin-bottom:4px;">${title}</div>
+        <div style="color:#2563EB;font-weight:700;">${price}</div>
+        <div style="font-size:.75rem;color:#6b7280;margin-top:2px;">${dist}</div>
+        <a href="${card.getAttribute('href')}" style="display:block;margin-top:8px;color:#2563EB;font-size:.8rem;font-weight:600;">View Details →</a>
+      </div>
+    `);
+    markers[id] = marker;
+
+    // Click marker → open popup (default) + draw route
+    marker.on('click', () => showRouteTo(lat, lng));
+
+    // Click card → open marker popup + highlight card + draw route
+    card.addEventListener('click', function (e) {
+      e.preventDefault();
+      document.querySelectorAll('.nearby-card').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      map.setView([lat, lng], 15, { animate: true });
+      marker.openPopup();
+      showRouteTo(lat, lng);
+    });
+
+    // Hover card → bounce marker
+    card.addEventListener('mouseenter', () => marker.openPopup());
+    card.addEventListener('mouseleave', () => marker.closePopup());
+  });
+
+  // Re-center button also clears any active route
+  document.getElementById('recenterBtn')?.addEventListener('click', () => {
+    map.setView([USER_LAT, USER_LNG], 13, { animate: true });
+    if (routingControl) {
+      map.removeControl(routingControl);
+      routingControl = null;
+    }
+  });
+}
 
 {% endif %}
 </script>
