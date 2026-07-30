@@ -17,6 +17,7 @@
                 </div>
             </div>
 
+            <!-- MAIN EDIT PROPERTY FORM -->
             <form method="POST" action="{{ url_for('owner.edit_property', property_id=property.id) }}"
                   enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -82,7 +83,7 @@
                                 <input type="text" class="form-control" name="city" value="{{ property.city }}" required>
                             </div>
                         </div>
-                        <div class="row g-3">
+                        <div class="row g-3 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Area / Locality</label>
                                 <input type="text" class="form-control" name="area" value="{{ property.area or '' }}">
@@ -90,6 +91,16 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Address</label>
                                 <input type="text" class="form-control" name="address" value="{{ property.address or '' }}">
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Latitude <span class="text-muted small">(Optional)</span></label>
+                                <input type="text" class="form-control" name="latitude" value="{{ property.latitude or '' }}" placeholder="e.g. 27.7172">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Longitude <span class="text-muted small">(Optional)</span></label>
+                                <input type="text" class="form-control" name="longitude" value="{{ property.longitude or '' }}" placeholder="e.g. 85.3240">
                             </div>
                         </div>
                     </div>
@@ -170,17 +181,15 @@
                                 {% for img in current_images %}
                                     <div class="position-relative">
                                         <img src="{{ url_for('static', filename=img.image_path) }}"
-                                             class="rounded" style="width:100px;height:80px;object-fit:cover;" alt="">
-                                        <form method="POST"
-                                              action="{{ url_for('owner.delete_property_image', property_id=property.id, image_id=img.id) }}"
-                                              class="position-absolute top-0 end-0">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-danger btn-sm rounded-circle p-0"
-                                                    style="width:22px;height:22px;line-height:1;"
-                                                    onclick="return confirm('Remove this image?')">
-                                                <i class="bi bi-x" style="font-size:12px;"></i>
-                                            </button>
-                                        </form>
+                                             class="rounded border" style="width:100px;height:80px;object-fit:cover;" alt="Property Image">
+                                        <button type="submit"
+                                                formaction="{{ url_for('owner.delete_property_image', property_id=property.id, image_id=img.id) }}"
+                                                formmethod="POST"
+                                                class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 m-1 p-0 shadow-sm"
+                                                style="width:22px;height:22px;line-height:1;"
+                                                onclick="return confirm('Remove this image?')">
+                                            <i class="bi bi-x" style="font-size:12px;"></i>
+                                        </button>
                                     </div>
                                 {% endfor %}
                             </div>
@@ -232,16 +241,14 @@
                                         {% endif %}
                                     </span>
                                 </div>
-                                <form method="POST"
-                                      action="{{ url_for('owner.delete_vacancy', property_id=property.id, entry_id=entry.id) }}"
-                                      style="display:inline;">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
-                                            title="Remove"
-                                            onclick="return confirm('Remove this availability window?')">
-                                        <i class="bi bi-trash3" style="font-size:.75rem;"></i>
-                                    </button>
-                                </form>
+                                <button type="submit"
+                                        formaction="{{ url_for('owner.delete_vacancy', property_id=property.id, entry_id=entry.id) }}"
+                                        formmethod="POST"
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0"
+                                        title="Remove"
+                                        onclick="return confirm('Remove this availability window?')">
+                                    <i class="bi bi-trash3" style="font-size:.75rem;"></i>
+                                </button>
                             </div>
                             {% endfor %}
                         </div>
@@ -251,28 +258,24 @@
                         </div>
                         {% endif %}
 
-                        <!-- Add new entry -->
+                        <!-- Add new vacancy entry inputs -->
                         <div class="vac-add-form">
                             <p class="fw-semibold small mb-2">Add a new window:</p>
-                            <form method="POST"
-                                  action="{{ url_for('owner.add_vacancy', property_id=property.id) }}"
-                                  class="d-flex flex-wrap gap-2 align-items-end">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="d-flex flex-wrap gap-2 align-items-end">
                                 <div>
                                     <label class="form-label small mb-1">Available From <span class="text-danger">*</span></label>
-                                    <input type="date" name="available_from" class="form-control form-control-sm"
-                                           style="min-width:160px;"
-                                           min="{{ now_date }}" required>
+                                    <input type="date" name="available_from" form="vacancy_add_form" class="form-control form-control-sm"
+                                           style="min-width:160px;" min="{{ now_date }}">
                                 </div>
                                 <div>
                                     <label class="form-label small mb-1">Available Until <span class="text-muted">(optional)</span></label>
-                                    <input type="date" name="available_until" class="form-control form-control-sm"
+                                    <input type="date" name="available_until" form="vacancy_add_form" class="form-control form-control-sm"
                                            style="min-width:160px;">
                                 </div>
-                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 align-self-end">
+                                <button type="submit" form="vacancy_add_form" class="btn btn-success btn-sm rounded-pill px-4 align-self-end">
                                     <i class="bi bi-plus-circle me-1"></i>Add
                                 </button>
-                            </form>
+                            </div>
                             <p class="text-muted mt-2 mb-0" style="font-size:.75rem;">
                                 Leave "until" empty for an open-ended window (property available from that date onwards).
                             </p>
@@ -280,6 +283,7 @@
                     </div>
                 </div>
 
+                <!-- Submit / Cancel -->
                 <div class="d-flex gap-3 justify-content-end pb-4">
                     <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary px-4">Cancel</a>
                     <button type="submit" class="btn btn-primary px-5">
@@ -287,6 +291,12 @@
                     </button>
                 </div>
             </form>
+
+            <!-- EXTERNAL SEPARATE FORM FOR ADDING VACANCIES -->
+            <form id="vacancy_add_form" method="POST" action="{{ url_for('owner.add_vacancy', property_id=property.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+
         </div>
     </div>
 </div>
