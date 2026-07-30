@@ -129,6 +129,10 @@
             <button class="pd-action-btn" data-bs-toggle="modal" data-bs-target="#reportModal" title="Report">
               <i class="bi bi-flag"></i><span>Report</span>
             </button>
+          {% else %}
+            <a href="{{ url_for('auth.login') }}" class="pd-action-btn" title="Sign in to report">
+              <i class="bi bi-flag"></i><span>Report</span>
+            </a>
           {% endif %}
         </div>
       </div>
