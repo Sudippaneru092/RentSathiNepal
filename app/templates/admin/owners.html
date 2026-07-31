@@ -72,26 +72,46 @@
                                 {% endif %}
                             </td>
                             <td class="text-end pe-3">
-                                {% if op.verification_status == 'pending' %}
-                                    <div class="d-flex gap-1 justify-content-end">
+                                <div class="d-inline-flex gap-2 justify-content-end">
+                                    <!-- 1. EDIT ACTION: Always available to review or fix details -->
+                                    <a href="{{ url_for('admin.edit_owner', owner_id=op.id) }}" 
+                                    class="btn btn-sm btn-outline-primary" title="Edit Profile">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+
+                                    <!-- 2. VERIFICATION ACTIONS: Only visible if the status is 'pending' -->
+                                    {% if op.verification_status == 'pending' %}
                                         <form method="POST" action="{{ url_for('admin.verify_owner', owner_id=op.id) }}" class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="action" value="verify">
-                                            <button type="submit" class="btn btn-success btn-sm">
+                                            <button type="submit" class="btn btn-sm btn-success">
                                                 <i class="bi bi-check-circle me-1"></i>Verify
                                             </button>
                                         </form>
+
                                         <form method="POST" action="{{ url_for('admin.verify_owner', owner_id=op.id) }}" class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="action" value="reject">
-                                            <button type="submit" class="btn btn-danger btn-sm">
+                                            <button type="submit" class="btn btn-sm btn-danger">
                                                 <i class="bi bi-x-circle me-1"></i>Reject
                                             </button>
                                         </form>
-                                    </div>
-                                {% else %}
-                                    <span class="text-muted small">—</span>
-                                {% endif %}
+                                    {% endif %}
+
+                                    <!-- 3. ACCOUNT STATUS ACTION: Always available (Suspend/Activate) -->
+                                    <!-- We use op.user_id here because toggle_user_status targets the User model -->
+                                    <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=op.user_id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit"
+                                                class="btn btn-sm {% if op.user.account_status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if op.user.account_status == 'active' %}
+                                                <i class="bi bi-slash-circle me-1"></i>Suspend
+                                            {% else %}
+                                                <i class="bi bi-check-circle me-1"></i>Activate
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     {% else %}

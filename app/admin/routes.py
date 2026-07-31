@@ -182,27 +182,128 @@ def properties():
 @login_required
 @admin_required
 def verify_property(property_id):
-    property = Property.query.get_or_404(property_id)
+    """Quick action route for the Verify/Reject buttons in the table."""
+    prop = Property.query.get_or_404(property_id)
     action = request.form.get('action')
+
     if action == 'verify':
-        property.verification_status = 'verified'
+        prop.verification_status = 'verified'
         db.session.commit()
-        flash(f'Property "{property.title}" has been verified.', 'success')
-        log_action('verify_property', f'Verified property ID {property_id}: {property.title}')
-        logger.info('Admin %s verified property id=%s "%s"',
-                    current_user.id, property_id, property.title)
+        flash(f'Property "{prop.title}" has been verified.', 'success')
+        log_action('quick_verify_property', f'Verified property ID {property_id}')
         from app.utils.notifications import notify_property_verified
-        notify_property_verified(property)
+        notify_property_verified(prop)
+        
     elif action == 'reject':
-        property.verification_status = 'rejected'
+        prop.verification_status = 'rejected'
         db.session.commit()
-        flash(f'Property "{property.title}" has been rejected.', 'warning')
-        log_action('reject_property', f'Rejected property ID {property_id}: {property.title}')
-        logger.info('Admin %s rejected property id=%s "%s"',
-                    current_user.id, property_id, property.title)
+        flash(f'Property "{prop.title}" has been rejected.', 'warning')
+        log_action('quick_reject_property', f'Rejected property ID {property_id}')
         from app.utils.notifications import notify_property_rejected
-        notify_property_rejected(property)
+        notify_property_rejected(prop)
+        
     return redirect(url_for('admin.properties'))
+
+@admin_bp.route('/properties/<int:property_id>/toggle-status', methods=['POST'])
+@login_required
+@admin_required
+def toggle_property_status(property_id):
+    """Suspends or Activates a property (sets status to active/inactive)."""
+    prop = Property.query.get_or_404(property_id)
+    
+    if prop.status == 'active':
+        prop.status = 'inactive'
+        flash(f'Property "{prop.title}" has been suspended.', 'warning')
+        log_action('suspend_property', f'Suspended property ID {property_id}: {prop.title}')
+    else:
+        prop.status = 'active'
+        flash(f'Property "{prop.title}" has been activated.', 'success')
+        log_action('activate_property', f'Activated property ID {property_id}: {prop.title}')
+    
+    db.session.commit()
+    return redirect(request.referrer or url_for('admin.properties'))
+
+@admin_bp.route('/properties/<int:property_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_property(property_id):
+    """Soft delete a property."""
+    prop = Property.query.get_or_404(property_id)
+    title = prop.title
+    prop.soft_delete()
+    db.session.commit()
+    log_action('delete_property', f'Deleted property: {title}')
+    flash(f'Property "{title}" has been removed.', 'success')
+    return redirect(url_for('admin.properties'))
+
+
+@admin_bp.route('/properties/<int:property_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_property(property_id):
+    prop = Property.query.get_or_404(property_id)
+    from app.models import Amenity, PropertyAmenity 
+    all_amenities = Amenity.query.all()
+
+    # --- THE FIX IS HERE ---
+    # We need the amenity_id from the junction table, NOT the id of the junction record itself
+    existing_amenity_ids = [link.amenity_id for link in prop.amenities.all()]
+    # -----------------------
+
+    if request.method == 'POST':
+        try:
+            # 1. Update all your standard property fields
+            prop.title = request.form.get('title', prop.title).strip()
+            prop.description = request.form.get('description', prop.description)
+            prop.property_type = request.form.get('property_type', prop.property_type)
+            prop.price = float(request.form.get('price', prop.price))
+            prop.province = request.form.get('province', prop.province)
+            prop.district = request.form.get('district', prop.district)
+            prop.city = request.form.get('city', prop.city)
+            prop.address = request.form.get('address', prop.address)
+            prop.bedrooms = int(request.form.get('bedrooms', prop.bedrooms or 0))
+            prop.bathrooms = int(request.form.get('bathrooms', prop.bathrooms or 0))
+            prop.area = request.form.get('area', prop.area)
+            prop.furnished = 'furnished' in request.form
+            prop.parking = 'parking' in request.form
+
+            # 2. Update Amenities (Add/Remove)
+            selected_amenity_ids = request.form.getlist('amenities')
+            
+            # Wipe old links
+            PropertyAmenity.query.filter_by(property_id=prop.id).delete()
+            
+            # Add new links from the checkboxes
+            for a_id in selected_amenity_ids:
+                new_link = PropertyAmenity(property_id=prop.id, amenity_id=int(a_id))
+                db.session.add(new_link)
+
+            # 3. Update Verification
+            new_status = request.form.get('verification_status')
+            if new_status in ['pending', 'verified', 'rejected']:
+                if prop.verification_status != new_status:
+                    old_status = prop.verification_status
+                    prop.verification_status = new_status
+                    log_action('change_property_status', f'Property {prop.id} status: {old_status} -> {new_status}')
+                    if new_status == 'verified':
+                        from app.utils.notifications import notify_property_verified
+                        notify_property_verified(prop)
+
+            db.session.commit()
+            flash(f"Property '{prop.title}' updated successfully.", "success")
+            return redirect(url_for('admin.properties'))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error: {str(e)}")
+            flash("Error saving changes.", "danger")
+            return redirect(url_for('admin.properties'))
+
+    return render_template('admin/edit_property.html', 
+                           prop=prop, 
+                           all_amenities=all_amenities, 
+                           existing_amenity_ids=existing_amenity_ids)
+
 
 
 @admin_bp.route('/users')
@@ -231,21 +332,81 @@ def toggle_user_status(user_id):
     user = User.query.get_or_404(user_id)
     if user.role == 'admin':
         flash('Cannot change status of admin accounts.', 'danger')
-        return redirect(url_for('admin.users'))
+        return redirect(request.referrer or url_for('admin.users'))
+
     if user.account_status == 'active':
         user.account_status = 'suspended'
         flash(f'User {user.full_name} has been suspended.', 'warning')
         log_action('suspend_user', f'Suspended user ID {user_id}: {user.email}')
-        logger.info('Admin %s suspended user id=%s %s',
-                    current_user.id, user_id, user.email)
     else:
         user.account_status = 'active'
         flash(f'User {user.full_name} has been activated.', 'success')
         log_action('activate_user', f'Activated user ID {user_id}: {user.email}')
-        logger.info('Admin %s activated user id=%s %s',
-                    current_user.id, user_id, user.email)
+    
     db.session.commit()
-    return redirect(url_for('admin.users'))
+    # Use request.referrer so the admin stays on the page they are currently viewing
+    return redirect(request.referrer or url_for('admin.users'))
+
+@admin_bp.route('/owners/<int:owner_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_owner(owner_id):
+    """Master Edit Route: Handles User and OwnerProfile updates together."""
+    owner = OwnerProfile.query.get_or_404(owner_id)
+    user = owner.user 
+
+    if request.method == 'POST':
+        try:
+            # --- Update User Model (Personal Details) ---
+            user.full_name = request.form.get('full_name', user.full_name).strip()
+            
+            # Email Uniqueness Check
+            new_email = request.form.get('email', user.email).strip().lower()
+            if new_email != user.email:
+                if User.query.filter(User.email == new_email, User.id != user.id).first():
+                    flash('This email is already in use by another account.', 'danger')
+                    return redirect(url_for('admin.edit_owner', owner_id=owner_id))
+                user.email = new_email
+
+            user.phone = request.form.get('phone', '').strip() or None
+            user.gender = request.form.get('gender') or None
+            user.occupation = request.form.get('occupation', '').strip() or None
+            user.province = request.form.get('province', '').strip() or None
+            user.district = request.form.get('district', '').strip() or None
+            user.city = request.form.get('city', '').strip() or None
+            user.address = request.form.get('address', '').strip() or None
+            user.account_status = request.form.get('account_status', user.account_status)
+
+            # --- Update OwnerProfile Model (Business Details) ---
+            owner.citizenship_number = request.form.get('citizenship_number', owner.citizenship_number).strip() or None
+            owner.owner_type = request.form.get('owner_type', owner.owner_type)
+            
+            # --- Handle Verification Decision (Reject to Accept logic) ---
+            new_status = request.form.get('verification_status')
+            if new_status in ['pending', 'verified', 'rejected']:
+                if owner.verification_status != new_status:
+                    old_status = owner.verification_status
+                    owner.verification_status = new_status
+                    log_action('change_owner_status', f'Owner {user.email} changed from {old_status} to {new_status}')
+                    
+                    # Notify owner if they were just verified
+                    if new_status == 'verified':
+                        from app.utils.notifications import notify_owner_verified
+                        notify_owner_verified(owner)
+
+            db.session.commit()
+            flash(f"Successfully updated profile for {user.full_name}", "success")
+            return redirect(url_for('admin.owners'))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating owner {owner_id}: {str(e)}")
+            flash("An error occurred while saving changes.", "danger")
+            return redirect(url_for('admin.owners'))
+
+    return render_template('admin/edit_owners.html', owner=owner, user=user)
+
+
 
 
 @admin_bp.route('/owners')
@@ -268,28 +429,26 @@ def owners():
 @login_required
 @admin_required
 def verify_owner(owner_id):
+    """Quick action route for the 'Verify' and 'Reject' buttons in the table."""
     owner = OwnerProfile.query.get_or_404(owner_id)
     action = request.form.get('action')
+
     if action == 'verify':
         owner.verification_status = 'verified'
         db.session.commit()
-        flash('Owner has been verified.', 'success')
-        log_action('verify_owner', f'Verified owner profile ID {owner_id}')
-        logger.info('Admin %s verified owner profile id=%s user=%s',
-                    current_user.id, owner_id, owner.user_id)
+        flash(f'Owner {owner.user.full_name} has been verified.', 'success')
+        log_action('quick_verify_owner', f'Verified owner ID {owner_id}')
         from app.utils.notifications import notify_owner_verified
         notify_owner_verified(owner)
     elif action == 'reject':
         owner.verification_status = 'rejected'
         db.session.commit()
-        flash('Owner has been rejected.', 'warning')
-        log_action('reject_owner', f'Rejected owner profile ID {owner_id}')
-        logger.info('Admin %s rejected owner profile id=%s user=%s',
-                    current_user.id, owner_id, owner.user_id)
+        flash(f'Owner {owner.user.full_name} has been rejected.', 'warning')
+        log_action('quick_reject_owner', f'Rejected owner ID {owner_id}')
         from app.utils.notifications import notify_owner_rejected
         notify_owner_rejected(owner)
+        
     return redirect(url_for('admin.owners'))
-
 
 @admin_bp.route('/reports')
 @login_required
@@ -366,3 +525,4 @@ def delete_amenity(amenity_id):
     log_action('delete_amenity', f'Deleted amenity: {name}')
     flash(f'Amenity "{name}" deleted.', 'info')
     return redirect(url_for('admin.amenities'))
+

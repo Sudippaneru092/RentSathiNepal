@@ -75,23 +75,34 @@
                                 {% endif %}
                             </td>
                             <td class="text-end pe-3">
-                                <div class="d-flex gap-1 justify-content-end">
+                                <div class="d-inline-flex gap-2 justify-content-end">
+                                    <!-- 1. EDIT ACTION -->
+                                    <a href="{{ url_for('admin.edit_property', property_id=prop.id) }}" 
+                                    class="btn btn-sm btn-outline-primary">Edit</a>
+
+                                    <!-- 2. VERIFICATION ACTIONS (Only if pending) -->
                                     {% if prop.verification_status == 'pending' %}
                                         <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="action" value="verify">
-                                            <button type="submit" class="btn btn-success btn-sm" title="Verify">
-                                                <i class="bi bi-check-circle"></i>
-                                            </button>
+                                            <button type="submit" class="btn btn-sm btn-success">Verify</button>
                                         </form>
                                         <form method="POST" action="{{ url_for('admin.verify_property', property_id=prop.id) }}" class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="action" value="reject">
-                                            <button type="submit" class="btn btn-danger btn-sm" title="Reject">
-                                                <i class="bi bi-x-circle"></i>
-                                            </button>
+                                            <button type="submit" class="btn btn-sm btn-danger">Reject</button>
                                         </form>
                                     {% endif %}
+
+                                    <!-- 3. SUSPEND/ACTIVATE ACTION -->
+                                    <form method="POST" action="{{ url_for('admin.toggle_property_status', property_id=prop.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" 
+                                                class="btn btn-sm {% if prop.status == 'active' %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if prop.status == 'active' %}Suspend{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+
                                 </div>
                             </td>
                         </tr>

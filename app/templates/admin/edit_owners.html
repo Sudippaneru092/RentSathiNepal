@@ -1,0 +1,223 @@
+{% extends "admin/admin_base.html" %}
+
+{% block admin_breadcrumb %}Owner Management / Edit{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0">Edit Owner Profile</h4>
+    <a href="{{ url_for('admin.owners') }}" class="btn btn-sm btn-outline-secondary">
+        &larr; Back to Owners
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- LEFT COLUMN: Profile & Ownership Details -->
+    <div class="col-lg-8">
+        <form method="POST" action="{{ url_for('admin.edit_owner', owner_id=owner.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Section 1: Personal Information (User Model) -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-semibold mb-0">Personal Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Full Name</label>
+                            <input type="text" name="full_name" class="form-control"
+                                   value="{{ user.full_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Email</label>
+                            <input type="email" name="email" class="form-control"
+                                   value="{{ user.email }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Phone</label>
+                            <input type="text" name="phone" class="form-control"
+                                   value="{{ user.phone or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Gender</label>
+                            <select name="gender" class="form-select">
+                                <option value="" {% if not user.gender %}selected{% endif %}>—</option>
+                                <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+                                <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+                                <option value="other" {% if user.gender == 'other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Province</label>
+                            <input type="text" name="province" class="form-control"
+                                   value="{{ user.province or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">District</label>
+                            <input type="text" name="district" class="form-control"
+                                   value="{{ user.district or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">City</label>
+                            <input type="text" name="city" class="form-control"
+                                   value="{{ user.city or '' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Address</label>
+                            <textarea name="address" class="form-control" rows="2">{{ user.address or '' }}</textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Account Status</label>
+                            <select name="account_status" class="form-select">
+                                <option value="active" {% if user.account_status == 'active' %}selected{% endif %}>Active</option>
+                                <option value="suspended" {% if user.account_status == 'suspended' %}selected{% endif %}>Suspended</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Ownership & Verification (OwnerProfile Model) -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-semibold mb-0">Ownership & Verification</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Citizenship Number</label>
+                            <input type="text" name="citizenship_number" class="form-control"
+                                   value="{{ owner.citizenship_number or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Owner Type</label>
+                            <select name="owner_type" class="form-select">
+                                <option value="individual" {% if owner.owner_type == 'individual' %}selected{% endif %}>Individual</option>
+                                <option value="agency" {% if owner.owner_type == 'agency' %}selected{% endif %}>Agency</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-semibold">Verification Decision</label>
+                            <select name="verification_status" class="form-select fw-bold {% if owner.verification_status == 'verified' %}text-success{% elif owner.verification_status == 'rejected' %}text-danger{% else %}text-warning{% endif %}">
+                                <option value="pending" {% if owner.verification_status == 'pending' %}selected{% endif %}>⏳ Pending</option>
+                                <option value="verified" {% if owner.verification_status == 'verified' %}selected{% endif %}>✅ Verified (Accept)</option>
+                                <option value="rejected" {% if owner.verification_status == 'rejected' %}selected{% endif %}>❌ Rejected</option>
+                            </select>
+                            <div class="form-text">Changing to 'Verified' will automatically notify the owner.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Identity Documents -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-semibold mb-0">Identity Documents</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6 text-center border-end">
+                            <p class="small text-muted mb-2">Citizenship Front</p>
+                            {% if owner.citizenship_front_image %}
+                                <a href="{{ url_for('static', filename=owner.citizenship_front_image) }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                    <i class="bi bi-eye me-1"></i> View Image
+                                </a>
+                            {% else %}
+                                <div class="alert alert-light small text-center py-2 mb-0">No image uploaded</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <p class="small text-muted mb-2">Citizenship Back</p>
+                            {% if owner.citizenship_back_image %}
+                                <a href="{{ url_for('static', filename=owner.citizenship_back_image) }}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                    <i class="bi bi-eye me-1"></i> View Image
+                                </a>
+                            {% else %}
+                                <div class="alert alert-light small text-center py-2 mb-0">No image uploaded</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg">Save All Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- RIGHT COLUMN: Sidebar (Profile, Password, Danger Zone) -->
+    <div class="col-lg-4">
+        <!-- Profile Summary -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body text-center">
+                {% if user.profile_image %}
+                    <img src="{{ url_for('static', filename=user.profile_image) }}"
+                         class="rounded-circle mb-2" width="72" height="72" style="object-fit:cover;" alt="">
+                {% else %}
+                    <div class="avatar-circle-sm bg-primary text-white fw-bold mx-auto mb-2"
+                         style="width:72px;height:72px;font-size:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:50%;">
+                        {{ user.full_name[0].upper() }}
+                    </div>
+                {% endif %}
+                <h6 class="fw-bold mb-0">{{ user.full_name }}</h6>
+                <div class="text-muted small">{{ user.email }}</div>
+                <span class="badge bg-primary-subtle text-primary text-capitalize mt-2">Owner</span>
+                <div class="text-muted small mt-2">Joined {{ user.created_at.strftime('%b %d, %Y') }}</div>
+            </div>
+        </div>
+
+        <!-- Reset Password -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-semibold mb-0">Reset Password</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.reset_user_password', user_id=user.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">New Password</label>
+                        <input type="password" name="new_password" class="form-control form-control-sm"
+                               minlength="8" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Confirm Password</label>
+                        <input type="password" name="confirm_password" class="form-control form-control-sm"
+                               minlength="8" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Set New Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card border-0 shadow-sm border-danger-subtle">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-semibold mb-0 text-danger">Danger Zone</h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">Permanently delete this account and all associated data.</p>
+                <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+                      onsubmit="return confirm('Delete {{ user.full_name }}? This cannot be undone.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                {% if user.role == 'admin' %}disabled{% endif %}>
+                            Delete User
+                        </button>
+                    </div>
+                </form>
+                {% if user.role == 'admin' %}
+                    <div class="form-text">Change the role away from Admin before deleting.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
