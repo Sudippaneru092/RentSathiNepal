@@ -1,0 +1,166 @@
+{% if current_user.role == "owner" %}
+    {% extends "owner/owner_base.html" %}
+{% else %}
+    {% extends "user/user_base.html" %}
+{% endif %}
+
+{% block owner_breadcrumb %}Conversation{% endblock %}
+{% block user_breadcrumb %}Conversation{% endblock %}
+
+{% set is_chat_page = request.endpoint and request.endpoint.startswith('chat.') %}
+
+{% block user_content %}
+<script>
+const OTHER_USER_ID = {{ other.id }};
+const ROOM = [{{ current_user.id }}, {{ other.id }}].sort().join("_");
+const CURRENT_USER_ID = {{ current_user.id }};
+const currentReceiver = {{ other.id }};
+const currentProperty = null;
+</script>
+
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+
+<div class="card border-0 shadow-sm" style="height:82vh;">
+
+    <!-- Header -->
+    <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
+
+        <div class="d-flex align-items-center">
+
+            {% if other.profile_image %}
+                <img src="{{ url_for('static', filename=other.profile_image) }}"
+                    class="rounded-circle border me-3"
+                    style="width:48px;height:48px;object-fit:cover;"
+                    alt="{{ other.full_name }}">
+            {% else %}
+                <div class="rounded-circle bg-primary text-white fw-bold d-flex justify-content-center align-items-center me-3"
+                    style="width:48px;height:48px;font-size:18px;">
+                    {{ other.full_name[0].upper() }}
+                </div>
+            {% endif %}
+
+            <div class="ms-3">
+
+                <h6 class="mb-0 fw-bold">
+                    {{ other.full_name }}
+                </h6>
+
+                <small class="text-muted">
+                    {% if other.role == "owner" %}
+                        Property Owner
+                    {% else %}
+                        Tenant
+                    {% endif %}
+                </small>
+
+            </div>
+
+        </div>
+
+        <a href="{{ url_for('chat.inbox') if current_user.is_authenticated and current_user.role in ['user', 'owner'] else '#' }}"
+           class="btn btn-light btn-sm">
+            <i class="bi bi-arrow-left"></i>
+            Back
+        </a>
+
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-box"
+         class="card-body"
+         style="overflow-y:auto;background:#f0f2f5;">
+
+        {% for msg in messages %}
+
+        <div class="d-flex mb-3 {% if msg.sender_id == current_user.id %}justify-content-end{% else %}justify-content-start{% endif %}">
+
+            <div
+                class="px-3 py-2 rounded-4 shadow-sm"
+                style="
+                    max-width:70%;
+                    {% if msg.sender_id == current_user.id %}
+                        background:#0d6efd;
+                        color:white;
+                    {% else %}
+                        background:white;
+                        color:#212529;
+                    {% endif %}
+                ">
+
+                {{ msg.message }}
+
+                <div class="small mt-1 text-end opacity-75">
+                    {{ (msg.sent_at + timedelta(hours=5, minutes=45)).strftime('%I:%M %p') }}
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer bg-white border-top">
+
+        <div class="input-group">
+
+            <input
+                id="message-input"
+                type="text"
+                class="form-control"
+                placeholder="Type a message...">
+
+            <button
+                id="send-btn"
+                class="btn btn-primary">
+
+                <i class="bi bi-send-fill"></i>
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+joinChat(currentReceiver);
+
+const chatBox = document.getElementById("chat-box");
+chatBox.scrollTop = chatBox.scrollHeight;
+
+document.getElementById("send-btn").onclick = function () {
+
+    const input = document.getElementById("message-input");
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    sendMessage(currentReceiver, null, text);
+
+    input.value = "";
+
+};
+
+document.getElementById("message-input").addEventListener("keypress", function (e) {
+
+    if (e.key === "Enter") {
+
+        e.preventDefault();
+
+        document.getElementById("send-btn").click();
+
+    }
+
+});
+</script>
+{% endblock %}
+
+{# --- REUSE USER_CONTENT FOR OWNER BASE TEMPLATE --- #}
+{% block owner_content %}
+    {{ self.user_content() }}
+{% endblock %}

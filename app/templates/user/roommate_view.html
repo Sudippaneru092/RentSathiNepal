@@ -52,8 +52,10 @@
 
         <!-- Contact button -->
         {% if current_user.is_authenticated and current_user.id != owner.id and current_user.role == 'user' %}
-          <a href="{{ url_for('user.messages') }}" class="rmv-contact-btn">
-            <i class="bi bi-chat-dots me-2"></i>Send Message
+          <a href="{{ url_for('chat.conversation', user_id=owner.id) }}"
+            class="btn btn-primary">
+              <i class="bi bi-chat-dots"></i>
+              Message
           </a>
           <p class="rmv-contact-note">
             Go to your Messages and start a conversation.

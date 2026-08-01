@@ -42,15 +42,15 @@
         <span class="owner-nav-label">Add Property</span>
       </a>
 
-      <a href="{{ url_for('owner.dashboard') }}#inquiriesSection"
-         class="owner-nav-item"
+      <a href="{{ url_for('chat.inbox') }}"
+         class="owner-nav-item {% if request.endpoint == 'chat.inbox' %}active{% endif %}"
          data-tooltip="Messages / Inquiries">
         <i class="bi bi-chat-dots owner-nav-icon"></i>
         <span class="owner-nav-label">
           Messages
-          {% if unread_inquiries is defined and unread_inquiries > 0 %}
-            <span class="owner-nav-badge">{{ unread_inquiries }}</span>
-          {% endif %}
+          <span class="user-nav-badge  {% if not unread_count or unread_count == 0 %}d-none{% endif %}">
+            {{ unread_count if unread_count else 0 }}
+          </span>
         </span>
       </a>
 
@@ -68,7 +68,7 @@
         <span class="owner-nav-label">
           Bookings
           {% if pending_bookings is defined and pending_bookings > 0 %}
-            <span class="owner-nav-badge">{{ pending_bookings }}</span>
+            <span class="user-nav-badge">{{ pending_bookings }}</span>
           {% endif %}
         </span>
       </a>
