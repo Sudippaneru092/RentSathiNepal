@@ -56,6 +56,14 @@ def create_app(config_class=Config):
     from app.chats import chat_bp
     app.register_blueprint(chat_bp)
     # ── Access logging (after every request) ─────────────────────────────
+
+    # --- NEW API LAYER ---
+    # All API routes will now start with /api/v1
+    # e.g., /api/v1/auth/login, /api/v1/properties/search
+    from app.api import api_bp  
+    app.register_blueprint(api_bp, url_prefix='/api/v1')
+
+    
     @app.after_request
     def log_access(response):
         from app.utils.logger import log_access as _log_access
