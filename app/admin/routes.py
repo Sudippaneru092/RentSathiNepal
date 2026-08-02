@@ -526,3 +526,174 @@ def delete_amenity(amenity_id):
     flash(f'Amenity "{name}" deleted.', 'info')
     return redirect(url_for('admin.amenities'))
 
+import os
+from werkzeug.utils import secure_filename
+# ... (your other imports)
+
+# Assuming you have this configured in your app
+# UPLOAD_FOLDER = 'static/uploads/citizenship' 
+
+@admin_bp.route('/owners/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_owner():
+    if request.method == 'POST':
+        try:
+            # 1. Extract User Data
+            full_name = request.form.get('full_name').strip()
+            email = request.form.get('email').strip().lower()
+            phone = request.form.get('phone', '').strip() or None
+            password = request.form.get('password')
+            gender = request.form.get('gender')
+            occupation = request.form.get('occupation', '').strip() or None
+            province = request.form.get('province', '').strip() or None
+            district = request.form.get('district', '').strip() or None
+            city = request.form.get('city', '').strip() or None
+            address = request.form.get('address', '').strip() or None
+
+            # 2. Extract Owner Profile Data
+            citizenship_number = request.form.get('citizenship_number', '').strip() or None
+            owner_type = request.form.get('owner_type')
+
+            # Validation: Check if email exists
+            if User.query.filter_by(email=email).first():
+                flash('Email already exists.', 'danger')
+                return redirect(url_for('admin.create_owner'))
+
+            # Validation: Password length
+            if len(password) < 8:
+                flash('Password must be at least 8 characters.', 'danger')
+                return redirect(url_for('admin.create_owner'))
+
+            # 3. Create User Object
+            new_user = User(
+                full_name=full_name,
+                email=email,
+                phone=phone,
+                password=generate_password_hash(password),
+                role='owner', # Force role to owner
+                gender=gender,
+                occupation=occupation,
+                province=province,
+                district=district,
+                city=city,
+                address=address,
+                account_status='active'
+            )
+            db.session.add(new_user)
+            db.session.flush() # Get the new_user.id before committing
+
+            # 4. Handle File Uploads (Citizenship Images)
+            front_img_path = None
+            back_img_path = None
+            
+            # Helper to handle file saving (Adjust 'app.config['UPLOAD_FOLDER']' as per your app)
+            def save_file(file):
+                if file and file.filename != '':
+                    filename = secure_filename(f"owner_{new_user.id}_{file.filename}")
+                    # Change this path to your actual upload directory
+                    save_path = os.path.join('static/uploads/citizenship', filename)
+                    # Ensure directory exists
+                    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                    file.save(save_path)
+                    return f"uploads/citizenship/{filename}"
+                return None
+
+            front_img_path = save_file(request.files.get('citizenship_front'))
+            back_img_path = save_file(request.files.get('citizenship_back'))
+
+            # 5. Create Owner Profile Object
+            new_owner_profile = OwnerProfile(
+                user_id=new_user.id,
+                citizenship_number=citizenship_number,
+                owner_type=owner_type,
+                citizenship_front_image=front_img_path,
+                citizenship_back_image=back_img_path,
+                verification_status='pending' # New owners start as pending
+            )
+            db.session.add(new_owner_profile)
+
+            db.session.commit()
+            log_action('create_owner', f'Admin created new owner: {email}')
+            flash(f'Owner {full_name} created successfully.', 'success')
+            return redirect(url_for('admin.owners'))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating owner: {str(e)}")
+            flash(f"Error: {str(e)}", "danger")
+            return redirect(url_for('admin.create_owner'))
+
+    return render_template('admin/add_owner.html', title='Add New Owner')
+
+
+import os
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
+
+@admin_bp.route('/users/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_user():
+    if request.method == 'POST':
+        try:
+            # 1. Extract Data
+            full_name = request.form.get('full_name').strip()
+            email = request.form.get('email').strip().lower()
+            phone = request.form.get('phone', '').strip() or None
+            password = request.form.get('password')
+            role = request.form.get('role')  # Will be 'user' or 'admin'
+            account_status = request.form.get('account_status', 'active')
+            
+            # Personal Details
+            gender = request.form.get('gender')
+            occupation = request.form.get('occupation', '').strip() or None
+            province = request.form.get('province', '').strip() or None
+            district = request.form.get('district', '').strip() or None
+            city = request.form.get('city', '').strip() or None
+            address = request.form.get('address', '').strip() or None
+
+            # 2. Validations
+            if User.query.filter_by(email=email).first():
+                flash('This email is already registered.', 'danger')
+                return redirect(url_for('admin.create_user'))
+
+            if len(password) < 8:
+                flash('Password must be at least 8 characters long.', 'danger')
+                return redirect(url_for('admin.create_user'))
+
+            if role not in ['user', 'admin']:
+                flash('Invalid role selected.', 'danger')
+                return redirect(url_for('admin.create_user'))
+
+            # 3. Create User
+            new_user = User(
+                full_name=full_name,
+                email=email,
+                phone=phone,
+                password=generate_password_hash(password),
+                role=role,
+                account_status=account_status,
+                gender=gender,
+                occupation=occupation,
+                province=province,
+                district=district,
+                city=city,
+                address=address,
+                profile_complete=True # Since admin is creating it, we assume it's complete
+            )
+
+            db.session.add(new_user)
+            db.session.commit()
+            
+            log_action('create_user_by_admin', f'Admin created {role}: {email}')
+            flash(f'User {full_name} created successfully as {role}.', 'success')
+            return redirect(url_for('admin.users'))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating user: {str(e)}")
+            flash(f"An error occurred: {str(e)}", "danger")
+            return redirect(url_for('admin.create_user'))
+
+    return render_template('admin/create_user.html', title='Create New User')

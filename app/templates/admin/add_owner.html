@@ -1,0 +1,105 @@
+{% extends "admin/admin_base.html" %}
+
+{% block admin_breadcrumb %}Owners / Add New{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0">Add New Owner</h4>
+    <a href="{{ url_for('admin.owners') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <form method="POST" enctype="multipart/form-data" class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                
+                <!-- Section 1: Account Credentials -->
+                <h5 class="text-primary mb-3"><i class="bi bi-person-lock me-2"></i>Account Credentials</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Full Name</label>
+                        <input type="text" name="full_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Email Address</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Phone Number</label>
+                        <input type="text" name="phone" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Initial Password</label>
+                        <input type="password" name="password" class="form-control" required minlength="8">
+                    </div>
+                </div>
+
+                <!-- Section 2: Personal Details -->
+                <h5 class="text-primary mb-3"><i class="bi bi-person me-2"></i>Personal Details</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Gender</label>
+                        <select name="gender" class="form-select">
+                            <option value="">Select</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Occupation</label>
+                        <input type="text" name="occupation" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Province</label>
+                        <input type="text" name="province" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">District</label>
+                        <input type="text" name="district" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">City</label>
+                        <input type="text" name="city" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Full Address</label>
+                        <textarea name="address" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <!-- Section 3: Business/Ownership Info -->
+                <h5 class="text-primary mb-3"><i class="bi bi-briefcase me-2"></i>Ownership Information</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Owner Type</label>
+                        <select name="owner_type" class="form-select" required>
+                            <option value="individual">Individual</option>
+                            <option value="agency">Agency</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Citizenship Number</label>
+                        <input type="text" name="citizenship_number" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Citizenship Front Image</label>
+                        <input type="file" name="citizenship_front" class="form-control" accept="image/*">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Citizenship Back Image</label>
+                        <input type="file" name="citizenship_back" class="form-control" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 pt-3">
+                    <button type="submit" class="btn btn-primary btn-lg">Create Owner Account</button>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

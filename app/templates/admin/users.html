@@ -5,6 +5,9 @@
 {% block admin_content %}
 <div class="d-flex align-items-center gap-3 mb-4">
     <h4 class="fw-bold mb-0">Manage Users</h4>
+    <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i> Create User
+    </a>
 </div>
  
 <!-- Filters -->
@@ -14,7 +17,7 @@
             <select name="role" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
                 <option value="">All Roles</option>
                 <option value="user" {% if role_filter == 'user' %}selected{% endif %}>Tenants</option>
-                <option value="owner" {% if role_filter == 'owner' %}selected{% endif %}>Owners</option>
+                <option value="owner" {% if role_filter == 'owner' %}selected{% endif %}>Landlords</option>
                 <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Admins</option>
             </select>
             <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
@@ -58,7 +61,17 @@
                                 </div>
                             </td>
                             <td class="small text-muted">{{ user.email }}</td>
-                            <td><span class="badge bg-secondary-subtle text-secondary text-capitalize">{{ user.role }}</span></td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary text-capitalize">
+                                    {% if user.role == 'owner' %}
+                                        Landlord
+                                    {% elif user.role == 'admin' %}
+                                        Admin
+                                    {% else %}
+                                        Tenant
+                                    {% endif %}
+                                </span>
+                            </td>
                             <td class="small">{{ user.phone or '—' }}</td>
                             <td>
                                 <span class="badge {% if user.account_status == 'active' %}bg-success{% else %}bg-danger{% endif %}">
