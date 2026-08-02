@@ -24,8 +24,12 @@ def create_app(config_class=Config):
     app = Flask(__name__, template_folder='templates', static_folder='static')
     app.config.from_object(config_class)
 
-    # Ensure upload folder exists
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    upload_folder = app.config.get('UPLOAD_FOLDER')
+    if upload_folder:
+        try:
+            os.makedirs(upload_folder, exist_ok=True)
+        except OSError as err:
+            app.logger.error("Failed to create upload folder '%s': %s", upload_folder, err)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -55,16 +59,11 @@ def create_app(config_class=Config):
 
     from app.chats import chat_bp
     app.register_blueprint(chat_bp)
-    # ── Access logging (after every request) ─────────────────────────────
 
-    # --- NEW API LAYER ---
-    # All API routes will now start with /api/v1
-    # e.g., /api/v1/auth/login, /api/v1/properties/search
     from app.api import api_bp  
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     csrf.exempt(api_bp)
 
-    
     @app.after_request
     def log_access(response):
         from app.utils.logger import log_access as _log_access
@@ -72,15 +71,17 @@ def create_app(config_class=Config):
         if flask_request.path.startswith('/static'):
             return response
         user_id = current_user.id if current_user.is_authenticated else None
-        _log_access(
-            user_id=user_id,
-            endpoint=flask_request.path,
-            method=flask_request.method,
-            ip_address=flask_request.remote_addr,
-            status_code=response.status_code,
-        )
+        try:
+            _log_access(
+                user_id=user_id,
+                endpoint=flask_request.path,
+                method=flask_request.method,
+                ip_address=flask_request.remote_addr,
+                status_code=response.status_code,
+            )
+        except Exception as err:
+            _err_logger.error("Failed to execute access logging: %s", err)
         return response
-
     # ── Error handlers ────────────────────────────────────────────────────
     _err_logger = logging.getLogger('rentsathi.errors')
 
@@ -100,6 +101,7 @@ def create_app(config_class=Config):
         )
         return render_template('errors/404.html'), 404
 
+
     @app.errorhandler(500)
     def internal_error(e):
         _err_logger.error(
@@ -107,22 +109,30 @@ def create_app(config_class=Config):
             flask_request.method, flask_request.path, str(e),
             exc_info=True,
         )
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception as rollback_err:
+            _err_logger.error("Database rollback failed during 500 handling: %s", rollback_err)
         return render_template('errors/404.html'), 500  # reuse until a 500 template is added
 
     with app.app_context():
         from app import models  # ensure models are imported for Migrate
 
-    # ── Jinja2 global helper ──────────────────────────────────────────────
+
     @app.template_global()
     def prop_img_url(path):
         """Return correct URL for property image — external URL or local static path."""
         if not path:
             return None
+        if not isinstance(path, str):
+            return None
         if path.startswith('http'):
             return path
         from flask import url_for
-        return url_for('static', filename=path)
+        try:
+            return url_for('static', filename=path)
+        except Exception:
+            return None
 
     # ── Global stats context processor ───────────────────────────────────
     @app.context_processor
