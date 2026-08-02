@@ -62,6 +62,7 @@ def create_app(config_class=Config):
     # e.g., /api/v1/auth/login, /api/v1/properties/search
     from app.api import api_bp  
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    csrf.exempt(api_bp)
 
     
     @app.after_request
