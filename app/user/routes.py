@@ -82,6 +82,33 @@ def dashboard():
         unread_count=unread_count,
     )
 
+from datetime import date 
+
+
+
+
+@user_bp.route('/bookings/<int:booking_id>/check-out', methods=['POST'])
+@login_required
+def request_check_out(booking_id):
+    """Allows a tenant to signal they are leaving a property."""
+    from app.models import Booking
+    booking = Booking.query.get_or_404(booking_id)
+
+    if booking.tenant_id != current_user.id:
+        flash('Unauthorized.', 'danger')
+        return redirect(url_for('user.my_bookings'))
+
+    if booking.status != 'confirmed':
+        flash('Only confirmed bookings can be checked out.', 'warning')
+        return redirect(url_for('user.my_bookings'))
+
+    booking.status = 'completed'
+    db.session.commit()
+    
+    logger.info('Tenant requested check-out: booking_id=%s', booking_id)
+    flash('Check-out request submitted. The owner will finalize your stay.', 'success')
+    return redirect(url_for('user.my_bookings'))
+
 
 @user_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -96,14 +123,12 @@ def profile():
         current_user.city = request.form.get('city', '').strip()
         current_user.address = request.form.get('address', '').strip()
 
-        # Profile image upload
         profile_img = request.files.get('profile_image')
         if profile_img and profile_img.filename:
             path = save_file(profile_img, subfolder='profiles')
             if path:
                 current_user.profile_image = path
 
-        # Password change (optional)
         current_password = request.form.get('current_password', '').strip()
         new_password = request.form.get('new_password', '').strip()
         confirm_new = request.form.get('confirm_new_password', '').strip()
@@ -221,18 +246,24 @@ def my_bookings():
 def cancel_booking(booking_id):
     from app.models import Booking
     booking = Booking.query.get_or_404(booking_id)
+    
     if booking.tenant_id != current_user.id:
         flash('Unauthorized.', 'danger')
         return redirect(url_for('user.my_bookings'))
-    if booking.status not in ('pending',):
-        flash('Only pending bookings can be cancelled.', 'warning')
+
+
+    if booking.status == 'pending':
+        booking.status = 'cancelled'
+    elif booking.status == 'confirmed' and booking.move_in_date > date.today():
+        booking.status = 'cancelled'
+    else:
+        flash('This booking cannot be cancelled. If you are moving out, please use "Check-out".', 'warning')
         return redirect(url_for('user.my_bookings'))
-    booking.status = 'cancelled'
+
     db.session.commit()
     logger.info('Booking cancelled: booking_id=%s by tenant=%s', booking_id, current_user.id)
     flash('Booking request cancelled.', 'info')
     return redirect(url_for('user.my_bookings'))
-
 
 # ── ROOMMATE BROWSE ────────────────────────────────────────────────────────
 
