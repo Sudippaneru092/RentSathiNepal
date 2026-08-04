@@ -9,9 +9,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 logger = logging.getLogger('rentsathi')
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
 
 @admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_user(user_id):
     if current_user.role != 'admin':
         abort(403)
@@ -59,6 +67,7 @@ def edit_user(user_id):
  
 @admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
 @login_required
+@admin_required
 def reset_user_password(user_id):
     if current_user.role != 'admin':
         abort(403)
@@ -82,10 +91,11 @@ def reset_user_password(user_id):
  
     flash(f'Password reset for {user.full_name}.', 'success')
     return redirect(url_for('admin.edit_user', user_id=user.id))
- 
- 
+    
+
 @admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
 @login_required
+@admin_required
 def delete_user(user_id):
     user = User.query.filter_by(id=user_id, is_deleted=False).first_or_404()
 
@@ -98,15 +108,6 @@ def delete_user(user_id):
 
     flash("User deleted successfully.", "success")
     return redirect(url_for("admin.users"))
-    
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.role != 'admin':
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated_function
-
 
 @admin_bp.route("/users/<int:user_id>/restore", methods=["POST"])
 @login_required
@@ -245,14 +246,11 @@ def edit_property(property_id):
     from app.models import Amenity, PropertyAmenity 
     all_amenities = Amenity.query.all()
 
-    # --- THE FIX IS HERE ---
-    # We need the amenity_id from the junction table, NOT the id of the junction record itself
     existing_amenity_ids = [link.amenity_id for link in prop.amenities.all()]
-    # -----------------------
+    
 
     if request.method == 'POST':
         try:
-            # 1. Update all your standard property fields
             prop.title = request.form.get('title', prop.title).strip()
             prop.description = request.form.get('description', prop.description)
             prop.property_type = request.form.get('property_type', prop.property_type)
@@ -267,18 +265,14 @@ def edit_property(property_id):
             prop.furnished = 'furnished' in request.form
             prop.parking = 'parking' in request.form
 
-            # 2. Update Amenities (Add/Remove)
             selected_amenity_ids = request.form.getlist('amenities')
             
-            # Wipe old links
             PropertyAmenity.query.filter_by(property_id=prop.id).delete()
             
-            # Add new links from the checkboxes
             for a_id in selected_amenity_ids:
                 new_link = PropertyAmenity(property_id=prop.id, amenity_id=int(a_id))
                 db.session.add(new_link)
 
-            # 3. Update Verification
             new_status = request.form.get('verification_status')
             if new_status in ['pending', 'verified', 'rejected']:
                 if prop.verification_status != new_status:
@@ -494,44 +488,63 @@ def logs():
 @admin_required
 def amenities():
     from app.models import Amenity
+
     if request.method == 'POST':
-        name = request.form.get('amenity_name', '').strip()
-        if name:
+        try:
+            name = request.form.get('amenity_name', '').strip()
+
+            if not name:
+                flash('Amenity name cannot be empty.', 'danger')
+                return redirect(url_for('admin.amenities'))
+
             existing = Amenity.query.filter_by(amenity_name=name).first()
             if existing:
                 flash('Amenity already exists.', 'warning')
-            else:
-                amenity = Amenity(amenity_name=name)
-                db.session.add(amenity)
-                db.session.commit()
-                log_action('add_amenity', f'Added amenity: {name}')
-                flash(f'Amenity "{name}" added.', 'success')
-        else:
-            flash('Amenity name cannot be empty.', 'danger')
+                return redirect(url_for('admin.amenities'))
+
+            amenity = Amenity(amenity_name=name)
+            db.session.add(amenity)
+            db.session.commit()
+
+            log_action('add_amenity', f'Added amenity: {name}')
+            flash(f'Amenity "{name}" added.', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            logger.exception(e)
+            flash('Error adding amenity.', 'danger')
+
+        return redirect(url_for('admin.amenities'))
 
     all_amenities = Amenity.query.order_by(Amenity.amenity_name).all()
-    return render_template('admin/amenities.html', title='Manage Amenities', amenities=all_amenities)
-
+    return render_template(
+        'admin/amenities.html',
+        title='Manage Amenities',
+        amenities=all_amenities
+    )
 
 @admin_bp.route('/amenities/<int:amenity_id>/delete', methods=['POST'])
 @login_required
 @admin_required
 def delete_amenity(amenity_id):
     from app.models import Amenity
-    amenity = Amenity.query.get_or_404(amenity_id)
-    name = amenity.amenity_name
-    db.session.delete(amenity)
-    db.session.commit()
-    log_action('delete_amenity', f'Deleted amenity: {name}')
-    flash(f'Amenity "{name}" deleted.', 'info')
+
+    try:
+        amenity = Amenity.query.get_or_404(amenity_id)
+        name = amenity.amenity_name
+
+        db.session.delete(amenity)
+        db.session.commit()
+
+        log_action('delete_amenity', f'Deleted amenity: {name}')
+        flash(f'Amenity "{name}" deleted.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        flash('Unable to delete amenity.', 'danger')
+
     return redirect(url_for('admin.amenities'))
-
-import os
-from werkzeug.utils import secure_filename
-# ... (your other imports)
-
-# Assuming you have this configured in your app
-# UPLOAD_FOLDER = 'static/uploads/citizenship' 
 
 @admin_bp.route('/owners/create', methods=['GET', 'POST'])
 @login_required

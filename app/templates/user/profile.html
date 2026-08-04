@@ -69,7 +69,10 @@
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Profile Picture</label>
-                                <input type="file" class="form-control" name="profile_image" accept="image/*">
+                                <input type="file" class="form-control" name="profile_image" id="profileImageInput" accept="image/*">
+                                <div class="form-text" id="fileErrorMessage" style="color: red; display: none;">
+                                    Invalid file type. Please select an image (JPG, PNG, GIF).
+                                </div>
                                 <div class="form-text">JPG, PNG or GIF. Max 2MB.</div>
                             </div>
                         </div>
@@ -147,4 +150,27 @@
         </div>
     </div>
 </div>
+<script>
+document.getElementById('profileImageInput').addEventListener('change', function() {
+    const file = this.files[0];
+    const errorMsg = document.getElementById('fileErrorMessage');
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+
+    if (file) {
+        if (!allowedTypes.includes(file.type)) {
+            // If file type is not allowed
+            errorMsg.style.display = 'block';
+            this.value = ''; // Clear the input so the form can't be submitted with the bad file
+        } else {
+            errorMsg.style.display = 'none';
+        }
+        
+        // Optional: Check file size (e.g., 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert("File is too large! Max size is 2MB.");
+            this.value = '';
+        }
+    }
+});
+</script>
 {% endblock %}

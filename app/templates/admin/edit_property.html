@@ -11,7 +11,6 @@
 </div>
 
 <div class="row g-4">
-    <!-- LEFT COLUMN: Property Details -->
     <div class="col-lg-8">
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -75,98 +74,92 @@
                 </div>
             </div>
 
-<!-- Section 1: Hardcoded Features (from Property Model) -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-sliders me-2"></i>Property Specifications</h6>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            <!-- Numerical Inputs -->
-            <div class="col-md-4">
-                <label class="form-label small fw-semibold">Bedrooms</label>
-                <input type="number" name="bedrooms" class="form-control" value="{{ prop.bedrooms }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small fw-semibold">Bathrooms</label>
-                <input type="number" name="bathrooms" class="form-control" value="{{ prop.bathrooms }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small fw-semibold">Area (sqft)</label>
-                <input type="text" name="area" class="form-control" value="{{ prop.area or '' }}">
-            </div>
-
-            <!-- Boolean Switches -->
-            <div class="col-md-6">
-                <div class="form-check form-switch mt-2">
-                    <input class="form-check-input" type="checkbox" name="furnished" id="furnished" {% if prop.furnished %}checked{% endif %}>
-                    <label class="form-check-label small fw-semibold" for="furnished">Furnished</label>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-sliders me-2"></i>Property Specifications</h6>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-check form-switch mt-2">
-                    <input class="form-check-input" type="checkbox" name="parking" id="parking" {% if prop.parking %}checked{% endif %}>
-                    <label class="form-check-label small fw-semibold" for="parking">Parking Available</label>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Numerical Inputs -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Bedrooms</label>
+                            <input type="number" name="bedrooms" class="form-control" value="{{ prop.bedrooms }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Bathrooms</label>
+                            <input type="number" name="bathrooms" class="form-control" value="{{ prop.bathrooms }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Area </label>
+                            <input type="text" name="area" class="form-control" value="{{ prop.area or '' }}">
+                        </div>
 
-<!-- Section 2: Dynamic Amenities (from Amenity Model) -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-plus-circle me-2"></i>Select Amenities</h6>
-        <small class="text-muted">Check the amenities included with this property</small>
-    </div>
-    <div class="card-body">
-        <div class="row g-3">
-            {% for amenity in all_amenities %}
-                <div class="col-md-3 col-sm-6">
-                    <div class="form-check">
-                        <!-- name="amenities" is the key your route looks for in request.form.getlist('amenities') -->
-                        <input class="form-check-input" type="checkbox" 
-                               name="amenities" 
-                               value="{{ amenity.id }}" 
-                               id="amenity_{{ amenity.id }}"
-                               {% if amenity.id in existing_amenity_ids %}checked{% endif %}>
-                        <label class="form-check-label small" for="amenity_{{ amenity.id }}">
-                            {{ amenity.amenity_name }}
-                        </label>
+                        <!-- Boolean Switches -->
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="furnished" id="furnished" {% if prop.furnished %}checked{% endif %}>
+                                <label class="form-check-label small fw-semibold" for="furnished">Furnished</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="parking" id="parking" {% if prop.parking %}checked{% endif %}>
+                                <label class="form-check-label small fw-semibold" for="parking">Parking Available</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            {% else %}
-                <div class="col-12">
-                    <p class="text-muted small">No amenities available in the system. Please add them via the Amenities management page.</p>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
+            </div>
 
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-semibold mb-0"><i class="bi bi-plus-circle me-2"></i>Select Amenities</h6>
+                    <small class="text-muted">Check the amenities included with this property</small>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% for amenity in all_amenities %}
+                            <div class="col-md-3 col-sm-6">
+                                <div class="form-check">
+                                    <!-- name="amenities" is the key your route looks for in request.form.getlist('amenities') -->
+                                    <input class="form-check-input" type="checkbox" 
+                                        name="amenities" 
+                                        value="{{ amenity.id }}" 
+                                        id="amenity_{{ amenity.id }}"
+                                        {% if amenity.id in existing_amenity_ids %}checked{% endif %}>
+                                    <label class="form-check-label small" for="amenity_{{ amenity.id }}">
+                                        {{ amenity.amenity_name }}
+                                    </label>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="col-12">
+                                <p class="text-muted small">No amenities available in the system. Please add them via the Amenities management page.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="fw-semibold mb-0">Verification Decision</h6>
+                </div>
+                <div class="card-body">
+                    <select name="verification_status" class="form-select fw-bold {% if prop.verification_status == 'verified' %}text-success{% elif prop.verification_status == 'rejected' %}text-danger{% else %}text-warning{% endif %}">
+                        <option value="pending" {% if prop.verification_status == 'pending' %}selected{% endif %}>⏳ Pending</option>
+                        <option value="verified" {% if prop.verification_status == 'verified' %}selected{% endif %}>✅ Verified</option>
+                        <option value="rejected" {% if prop.verification_status == 'rejected' %}selected{% endif %}>❌ Rejected</option>
+                    </select>
+                </div>
+            </div>
             <div class="d-grid">
                 <button type="submit" class="btn btn-primary btn-lg">Save Property Changes</button>
             </div>
         </form>
     </div>
 
-    <!-- RIGHT COLUMN: Sidebar -->
     <div class="col-lg-4">
-        <!-- Status Card -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white py-3">
-                <h6 class="fw-semibold mb-0">Verification Decision</h6>
-            </div>
-            <div class="card-body">
-                <select name="verification_status" class="form-select fw-bold {% if prop.verification_status == 'verified' %}text-success{% elif prop.verification_status == 'rejected' %}text-danger{% else %}text-warning{% endif %}">
-                    <option value="pending" {% if prop.verification_status == 'pending' %}selected{% endif %}>⏳ Pending</option>
-                    <option value="verified" {% if prop.verification_status == 'verified' %}selected{% endif %}>✅ Verified</option>
-                    <option value="rejected" {% if prop.verification_status == 'rejected' %}selected{% endif %}>❌ Rejected</option>
-                </select>
-            </div>
-        </div>
 
-        <!-- Image Preview -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white py-3">
                 <h6 class="fw-semibold mb-0">Primary Image</h6>

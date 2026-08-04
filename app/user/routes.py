@@ -14,18 +14,26 @@ logger = logging.getLogger('rentsathi')
 
 
 def save_file(file, subfolder='misc'):
-    allowed = current_app.config.get('ALLOWED_EXTENSIONS', {'png', 'jpg', 'jpeg', 'gif', 'pdf'})
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    ALLOWED_MIME_TYPES = {'image/png', 'image/jpeg', 'image/jpg', 'image/gif'}
+
     if not file or not file.filename:
         return None
+
     ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-    if ext not in allowed:
+    if ext not in ALLOWED_EXTENSIONS:
         return None
+
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        logger.warning(f"Attempted upload of invalid MIME type: {file.content_type}")
+        return None
+
     unique_name = f"{uuid.uuid4().hex}.{ext}"
     folder = os.path.join(current_app.config['UPLOAD_FOLDER'], subfolder)
     os.makedirs(folder, exist_ok=True)
+    
     file.save(os.path.join(folder, unique_name))
     return f"uploads/{subfolder}/{unique_name}"
-
 
 @user_bp.route('/dashboard')
 @login_required
@@ -35,7 +43,6 @@ def dashboard():
     unread_count = Chat.query.filter_by(receiver_id=current_user.id, is_read=False).count()
     total_properties = Property.query.filter_by(status='active').count()
 
-    # Recent favorites (up to 4 for dashboard grid)
     recent_favorites = (
         Favorite.query
         .filter_by(user_id=current_user.id)

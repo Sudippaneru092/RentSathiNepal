@@ -302,14 +302,16 @@
               {% for msg in recent_inquiries %}
               <div class="od-inquiry-item">
 
-                  <div class="od-inq-avatar">
-                      {% if msg.sender.profile_image %}
-                          <img src="{{ url_for('static', filename=msg.sender.profile_image) }}"
-                              alt="{{ msg.sender.full_name }}">
-                      {% else %}
-                          {{ msg.sender.full_name[0].upper() }}
-                      {% endif %}
-                  </div>
+                <div class="od-inq-avatar flex-shrink-0 rounded-circle overflow-hidden d-flex align-items-center justify-content-center"
+                    style="width:48px; height:48px;">
+                    {% if msg.sender.profile_image %}
+                        <img src="{{ url_for('static', filename=msg.sender.profile_image) }}"
+                            alt="{{ msg.sender.full_name }}"
+                            class="w-100 h-100 object-fit-cover">
+                    {% else %}
+                        {{ msg.sender.full_name[0].upper() }}
+                    {% endif %}
+                </div>
 
                   <div class="od-inq-body">
 

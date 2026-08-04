@@ -184,11 +184,15 @@
   const hidden = document.getElementById('otpHidden');
   const form = document.getElementById('otpForm');
   const submitBtn = document.getElementById('otpSubmit');
- 
+  const resendLink = document.getElementById('resendLink');
+  const countdownEl = document.getElementById('otpCountdown');
+  const timerText = document.getElementById('otpTimerText');
+
+  // --- OTP INPUT LOGIC ---
   function syncHidden() {
     hidden.value = boxes.map(b => b.value).join('');
   }
- 
+
   boxes.forEach((box, i) => {
     box.addEventListener('input', function () {
       this.value = this.value.replace(/[^0-9]/g, '').slice(0, 1);
@@ -198,13 +202,13 @@
       }
       syncHidden();
     });
- 
+
     box.addEventListener('keydown', function (e) {
       if (e.key === 'Backspace' && !this.value && i > 0) {
         boxes[i - 1].focus();
       }
     });
- 
+
     box.addEventListener('paste', function (e) {
       e.preventDefault();
       const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
@@ -217,9 +221,9 @@
       if (next) next.focus();
     });
   });
- 
+
   if (boxes[0]) boxes[0].focus();
- 
+
   form?.addEventListener('submit', function (e) {
     syncHidden();
     if (hidden.value.length < boxes.length) {
@@ -230,26 +234,53 @@
     submitBtn.innerHTML = '<i class="bi bi-arrow-repeat spin me-2"></i>Verifying...';
     submitBtn.disabled = true;
   });
- 
-  // Countdown timer
-  let secondsLeft = 5 * 60;
-  const countdownEl = document.getElementById('otpCountdown');
-  const timerText = document.getElementById('otpTimerText');
-  const resendLink = document.getElementById('resendLink');
-  resendLink.classList.add('disabled');
- 
+
+  // --- PERSISTENT TIMER LOGIC ---
+  
+  // 1. Check if we already have an expiration time in localStorage
+  let expirationTime = localStorage.getItem('otp_expiry_timestamp');
+  const now = Date.now();
+
+  // 2. If no timestamp exists OR the timestamp has already passed, set a new one
+  if (!expirationTime || parseInt(expirationTime) < now) {
+    const fiveMinutesInMs = 5 * 60 * 1000;
+    expirationTime = now + fiveMinutesInMs;
+    localStorage.setItem('otp_expiry_timestamp', expirationTime);
+  } else {
+    // Convert back to number for calculations
+    expirationTime = parseInt(expirationTime);
+  }
+
+  // 3. Start the timer interval
   const timer = setInterval(() => {
-    secondsLeft--;
-    if (secondsLeft <= 0) {
+    const currentTime = Date.now();
+    const timeLeftMs = expirationTime - currentTime;
+
+    if (timeLeftMs <= 0) {
       clearInterval(timer);
       timerText.innerHTML = 'Your code has expired.';
       resendLink.classList.remove('disabled');
+      countdownEl.textContent = "00:00";
       return;
     }
-    const m = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
-    const s = String(secondsLeft % 60).padStart(2, '0');
+
+    // Calculate minutes and seconds from the remaining milliseconds
+    const totalSecondsLeft = Math.floor(timeLeftMs / 1000);
+    const m = String(Math.floor(totalSecondsLeft / 60)).padStart(2, '0');
+    const s = String(totalSecondsLeft % 60).padStart(2, '0');
+    
     countdownEl.textContent = `${m}:${s}`;
   }, 1000);
+
+  // 4. Handle Resend Link (Reset the timer when clicked)
+  resendLink.addEventListener('click', function(e) {
+    // Note: Since this is a link to a URL, the page will reload anyway.
+    // However, if you use AJAX for resend, you'd need to manually reset localStorage here.
+    // For a standard link, the server should ideally send a new timestamp via session,
+    // but for this client-side fix, we clear it so the logic above creates a new one on reload.
+    localStorage.removeItem('otp_expiry_timestamp');
+  });
+
 })();
 </script>
 {% endblock %}
